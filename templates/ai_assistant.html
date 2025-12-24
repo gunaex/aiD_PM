@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+.sidebar-item-active { border-right: 4px solid #3b82f6; background: #1e293b; }
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .loading {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+                        <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+                
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <!-- Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                    🤖 AI Assistant
+                    <span class="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-normal">BETA</span>
+                </h1>
+                <p class="text-slate-600 mt-2">AI-powered features to make your project management smarter and faster</p>
+            </div>
+
+            <!-- AI Feature Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Feature 1: Task Breakdown -->
+                <div class="feature-card bg-white rounded-xl border border-slate-200 p-6 shadow-sm cursor-pointer" onclick="showFeature('breakdown')">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl">
+                            📋
+                        </div>
+                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-bold">ACTIVE</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Smart Task Breakdown</h3>
+                    <p class="text-slate-600 text-sm mb-4">Automatically break down complex tasks into actionable subtasks with estimated timelines</p>
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span>⚡ Instant</span>
+                        <span>•</span>
+                        <span>📊 Rule-based + AI</span>
+                    </div>
+                </div>
+
+                <!-- Feature 2: Resource Recommendation -->
+                <div class="feature-card bg-white rounded-xl border border-slate-200 p-6 shadow-sm cursor-pointer" onclick="showFeature('resources')">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-2xl">
+                            👥
+                        </div>
+                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-bold">ACTIVE</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">AI Resource Matching</h3>
+                    <p class="text-slate-600 text-sm mb-4">Get smart recommendations for the best team member to assign based on skills and workload</p>
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span>🎯 Accurate</span>
+                        <span>•</span>
+                        <span>⚖️ Balanced</span>
+                    </div>
+                </div>
+
+                <!-- Feature 3: Risk Prediction -->
+                <div class="feature-card bg-white rounded-xl border border-slate-200 p-6 shadow-sm cursor-pointer" onclick="showFeature('risk')">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center text-2xl">
+                            ⚠️
+                        </div>
+                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-bold">ACTIVE</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Risk Prediction</h3>
+                    <p class="text-slate-600 text-sm mb-4">Predict task risks before they become problems with AI-powered analysis</p>
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span>🔮 Predictive</span>
+                        <span>•</span>
+                        <span>📈 Analytics</span>
+                    </div>
+                </div>
+
+                <!-- Feature 4: Project Insights -->
+                <div class="feature-card bg-white rounded-xl border border-slate-200 p-6 shadow-sm cursor-pointer" onclick="showFeature('insights')">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-2xl">
+                            💡
+                        </div>
+                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-bold">ACTIVE</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Project Insights</h3>
+                    <p class="text-slate-600 text-sm mb-4">Get AI-generated insights and recommendations for your entire project</p>
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span>📊 Comprehensive</span>
+                        <span>•</span>
+                        <span>🎯 Actionable</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Modals -->
+            
+            <!-- Task Breakdown Modal -->
+            <div id="breakdown-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-blue-900 text-white rounded-t-xl">
+                        <div>
+                            <h3 class="text-xl font-bold">📋 Smart Task Breakdown</h3>
+                            <p class="text-sm text-blue-200">Break down complex tasks automatically</p>
+                        </div>
+                        <button onclick="closeFeature('breakdown')" class="text-white hover:text-slate-300 text-2xl">×</button>
+                    </div>
+                    <div class="p-6">
+                        <form id="breakdown-form" onsubmit="generateBreakdown(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Task Name</label>
+                                <input type="text" name="task_name" required
+                                       class="w-full border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       placeholder="e.g., Build REST API for User Management">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Task Type</label>
+                                    <select name="task_type" required
+                                            class="w-full border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="Dev">Development</option>
+                                        <option value="Fix">Bug Fix</option>
+                                        <option value="Admin">Admin</option>
+                                        <option value="Procurement (PR/PO)">Procurement</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Start Date</label>
+                                    <input type="date" name="start_date" required
+                                           class="w-full border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="skip_weekends" checked class="form-checkbox h-5 w-5 text-blue-600">
+                                    <span class="ml-2 text-slate-700">Skip weekends in scheduling</span>
+                                </label>
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition">
+                                🤖 Generate Breakdown
+                            </button>
+                        </form>
+
+                        <div id="breakdown-loading" class="hidden text-center py-8">
+                            <div class="loading mx-auto"></div>
+                            <p class="mt-4 text-slate-600">AI is analyzing your task...</p>
+                        </div>
+
+                        <div id="breakdown-results" class="hidden mt-6">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                <h4 class="font-bold text-slate-800 mb-2">✨ AI Generated Subtasks</h4>
+                                <p class="text-sm text-slate-600">Total: <span id="subtask-count"></span> subtasks | Duration: <span id="total-days"></span> days</p>
+                            </div>
+                            <div id="subtasks-list" class="space-y-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resource Recommendation Modal -->
+            <div id="resources-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-green-900 text-white rounded-t-xl">
+                        <div>
+                            <h3 class="text-xl font-bold">👥 AI Resource Matching</h3>
+                            <p class="text-sm text-green-200">Find the best team member for the job</p>
+                        </div>
+                        <button onclick="closeFeature('resources')" class="text-white hover:text-slate-300 text-2xl">×</button>
+                    </div>
+                    <div class="p-6">
+                        <form id="resources-form" onsubmit="getResourceRecommendations(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Task Type</label>
+                                <select name="task_type" required
+                                        class="w-full border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="Dev">Development</option>
+                                    <option value="Fix">Bug Fix</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="Procurement (PR/PO)">Procurement</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Required Skills (comma-separated)</label>
+                                <input type="text" name="skills"
+                                       class="w-full border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="e.g., Python, FastAPI, SQL">
+                                <p class="text-xs text-slate-500 mt-1">Optional: Leave blank for general recommendations</p>
+                            </div>
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold transition">
+                                🤖 Find Best Match
+                            </button>
+                        </form>
+
+                        <div id="resources-loading" class="hidden text-center py-8">
+                            <div class="loading mx-auto"></div>
+                            <p class="mt-4 text-slate-600">AI is analyzing team capacity...</p>
+                        </div>
+
+                        <div id="resources-results" class="hidden mt-6"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Prediction Modal -->
+            <div id="risk-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-red-900 text-white rounded-t-xl">
+                        <div>
+                            <h3 class="text-xl font-bold">⚠️ Risk Prediction</h3>
+                            <p class="text-sm text-red-200">Analyze task risks with AI</p>
+                        </div>
+                        <button onclick="closeFeature('risk')" class="text-white hover:text-slate-300 text-2xl">×</button>
+                    </div>
+                    <div class="p-6">
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <p class="text-sm text-slate-700">💡 <strong>Tip:</strong> Go to any project's task list and click "Analyze Risk" or select a task here:</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Select Project</label>
+                            <select id="risk-project-select" onchange="loadProjectTasks(this.value)" 
+                                    class="w-full border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                                <option value="">-- Select Project --</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="risk-tasks-container" class="hidden mt-4">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Select Task</label>
+                            <div id="risk-tasks-list" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                        </div>
+                        <div id="risk-results" class="hidden mt-6"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Insights Modal -->
+            <div id="insights-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-purple-900 text-white rounded-t-xl">
+                        <div>
+                            <h3 class="text-xl font-bold">💡 Project Insights</h3>
+                            <p class="text-sm text-purple-200">AI-powered project analysis</p>
+                        </div>
+                        <button onclick="closeFeature('insights')" class="text-white hover:text-slate-300 text-2xl">×</button>
+                    </div>
+                    <div class="p-6">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Select Project</label>
+                            <select id="insights-project-select" onchange="loadProjectInsights(this.value)" 
+                                    class="w-full border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="">-- Select Project --</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div id="insights-loading" class="hidden text-center py-8">
+                            <div class="loading mx-auto"></div>
+                            <p class="mt-4 text-slate-600">AI is generating insights...</p>
+                        </div>
+
+                        <div id="insights-results" class="hidden mt-6"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+    function showFeature(feature) {
+        document.getElementById(feature + '-modal').classList.remove('hidden');
+        // Set default date for breakdown
+        if (feature === 'breakdown') {
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="start_date"]').value = today;
+        }
+    }
+
+    function closeFeature(feature) {
+        document.getElementById(feature + '-modal').classList.add('hidden');
+    }
+
+    async function generateBreakdown(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        document.getElementById('breakdown-loading').classList.remove('hidden');
+        form.classList.add('hidden');
+        document.getElementById('breakdown-results').classList.add('hidden');
+
+        try {
+            const response = await fetch('/api/ai/breakdown-task', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                document.getElementById('subtask-count').textContent = data.total_subtasks;
+                document.getElementById('total-days').textContent = Math.round(data.total_days);
+
+                const listHtml = data.subtasks.map((subtask, index) => `
+                    <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-start justify-between mb-2">
+                            <h5 class="font-bold text-slate-800">${index + 1}. ${subtask.subtask_name}</h5>
+                            <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded font-bold">${subtask.estimated_days} days</span>
+                        </div>
+                        <div class="text-sm text-slate-600">
+                            <span>📅 ${subtask.planned_start} → ${subtask.planned_end}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('subtasks-list').innerHTML = listHtml;
+                document.getElementById('breakdown-results').classList.remove('hidden');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            document.getElementById('breakdown-loading').classList.add('hidden');
+            form.classList.remove('hidden');
+        }
+    }
+
+    async function getResourceRecommendations(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        document.getElementById('resources-loading').classList.remove('hidden');
+        form.classList.add('hidden');
+        document.getElementById('resources-results').classList.add('hidden');
+
+        const params = new URLSearchParams();
+        params.append('task_type', formData.get('task_type'));
+        if (formData.get('skills')) {
+            params.append('skills', formData.get('skills'));
+        }
+
+        try {
+            const response = await fetch('/api/ai/recommend-resources?' + params);
+            const data = await response.json();
+
+            if (data.success && data.recommendations.length > 0) {
+                const listHtml = data.recommendations.map((rec, index) => `
+                    <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-start justify-between mb-2">
+                            <div>
+                                <h5 class="font-bold text-slate-800">${index + 1}. ${rec.resource_name}</h5>
+                                <p class="text-sm text-slate-600">${rec.position}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-green-600">${rec.match_percentage}%</div>
+                                <div class="text-xs text-slate-500">Match</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            ${rec.reasons.map(r => `<span class="px-2 py-1 bg-slate-100 text-slate-700 text-xs rounded">${r}</span>`).join('')}
+                        </div>
+                        <div class="text-xs text-slate-500">
+                            📊 Score: ${rec.score} | 📋 Current Workload: ${rec.current_workload} tasks
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('resources-results').innerHTML = `
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <h4 class="font-bold text-slate-800 mb-2">✨ Top ${data.recommendations.length} Recommendations</h4>
+                    </div>
+                    ${listHtml}
+                `;
+                document.getElementById('resources-results').classList.remove('hidden');
+            } else {
+                document.getElementById('resources-results').innerHTML = `
+                    <div class="text-center py-8 text-slate-500">
+                        No resources found. Please add team members first.
+                    </div>
+                `;
+                document.getElementById('resources-results').classList.remove('hidden');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            document.getElementById('resources-loading').classList.add('hidden');
+            form.classList.remove('hidden');
+        }
+    }
+
+    async function loadProjectTasks(projectId) {
+        if (!projectId) {
+            document.getElementById('risk-tasks-container').classList.add('hidden');
+            return;
+        }
+
+        // Fetch project tasks
+        const response = await fetch(`/api/tasks?project_id=${projectId}`);
+        const data = await response.json();
+
+        if (data.tasks && data.tasks.length > 0) {
+            const tasksHtml = data.tasks.map(task => `
+                <button onclick="analyzeTaskRisk(${task.id})" 
+                        class="w-full text-left border border-slate-200 rounded-lg p-3 hover:bg-slate-50 transition">
+                    <div class="font-semibold text-slate-800">${task.task_name}</div>
+                    <div class="text-xs text-slate-500">Progress: ${task.actual_progress}%</div>
+                </button>
+            `).join('');
+
+            document.getElementById('risk-tasks-list').innerHTML = tasksHtml;
+            document.getElementById('risk-tasks-container').classList.remove('hidden');
+        }
+    }
+
+    async function analyzeTaskRisk(taskId) {
+        document.getElementById('risk-results').innerHTML = '<div class="text-center py-8"><div class="loading mx-auto"></div></div>';
+        document.getElementById('risk-results').classList.remove('hidden');
+
+        try {
+            const response = await fetch(`/api/ai/predict-risk/${taskId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const riskColorClass = {
+                    'red': 'bg-red-100 border-red-500 text-red-800',
+                    'orange': 'bg-orange-100 border-orange-500 text-orange-800',
+                    'yellow': 'bg-yellow-100 border-yellow-500 text-yellow-800',
+                    'green': 'bg-green-100 border-green-500 text-green-800'
+                }[data.risk_color];
+
+                const factorsHtml = data.risk_factors.length > 0
+                    ? data.risk_factors.map(f => `<li class="text-sm">${f}</li>`).join('')
+                    : '<li class="text-sm text-slate-500">No significant risk factors detected</li>';
+
+                const recsHtml = data.recommendations.map(r => `<li class="text-sm">${r}</li>`).join('');
+
+                document.getElementById('risk-results').innerHTML = `
+                    <div class="border-l-4 ${riskColorClass} rounded-lg p-4 mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-bold text-lg">${data.task_name}</h4>
+                            <div class="text-right">
+                                <div class="text-3xl font-bold">${data.risk_score}</div>
+                                <div class="text-sm">${data.risk_level} Risk</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-lg p-4 mb-4">
+                        <h5 class="font-bold text-slate-800 mb-2">⚠️ Risk Factors:</h5>
+                        <ul class="list-disc list-inside space-y-1">${factorsHtml}</ul>
+                    </div>
+
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <h5 class="font-bold text-slate-800 mb-2">💡 Recommendations:</h5>
+                        <ul class="list-disc list-inside space-y-1">${recsHtml}</ul>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function loadProjectInsights(projectId) {
+        if (!projectId) {
+            document.getElementById('insights-results').classList.add('hidden');
+            return;
+        }
+
+        document.getElementById('insights-loading').classList.remove('hidden');
+        document.getElementById('insights-results').classList.add('hidden');
+
+        try {
+            const response = await fetch(`/api/ai/project-insights/${projectId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const healthColorClass = {
+                    'green': 'bg-green-100 text-green-800',
+                    'blue': 'bg-blue-100 text-blue-800',
+                    'yellow': 'bg-yellow-100 text-yellow-800',
+                    'red': 'bg-red-100 text-red-800'
+                }[data.health_color];
+
+                const recsHtml = data.recommendations.map(r => `
+                    <li class="flex items-start gap-2">
+                        <span class="text-blue-600 mt-1">•</span>
+                        <span>${r}</span>
+                    </li>
+                `).join('');
+
+                document.getElementById('insights-results').innerHTML = `
+                    <div class="border ${healthColorClass} rounded-lg p-6 mb-6">
+                        <div class="text-center">
+                            <div class="text-4xl font-bold mb-2">${data.completion_rate}%</div>
+                            <div class="text-lg font-semibold">Project Health: ${data.project_health}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-4 mb-6">
+                        <div class="bg-slate-50 rounded-lg p-4 text-center">
+                            <div class="text-2xl font-bold text-slate-800">${data.total_tasks}</div>
+                            <div class="text-xs text-slate-600">Total Tasks</div>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4 text-center">
+                            <div class="text-2xl font-bold text-green-600">${data.completed_tasks}</div>
+                            <div class="text-xs text-green-700">Completed</div>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                            <div class="text-2xl font-bold text-yellow-600">${data.in_progress_tasks}</div>
+                            <div class="text-xs text-yellow-700">In Progress</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-4 text-center">
+                            <div class="text-2xl font-bold text-slate-600">${data.not_started_tasks}</div>
+                            <div class="text-xs text-slate-700">Not Started</div>
+                        </div>
+                    </div>
+
+                    ${data.high_risk_tasks_count > 0 ? `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <h5 class="font-bold text-red-800 mb-2">🚨 High Risk Tasks: ${data.high_risk_tasks_count}</h5>
+                    </div>
+                    ` : ''}
+
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <h5 class="font-bold text-slate-800 mb-3">💡 AI Recommendations:</h5>
+                        <ul class="space-y-2 text-sm text-slate-700">${recsHtml}</ul>
+                    </div>
+                `;
+
+                document.getElementById('insights-results').classList.remove('hidden');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            document.getElementById('insights-loading').classList.add('hidden');
+        }
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            ['breakdown', 'resources', 'risk', 'insights'].forEach(closeFeature);
+        }
+    });
+    </script>
+</body>
+</html>
+

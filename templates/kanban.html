@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+.sidebar-item-active { border-right: 4px solid #3b82f6; background: #1e293b; }
+        .kanban-column { min-height: 500px; }
+        .task-card { cursor: move; transition: all 0.2s; }
+        .task-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .task-card.dragging { opacity: 0.5; }
+        .kanban-column.drag-over { background: #f1f5f9; border-color: #3b82f6; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+                        <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+                
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Kanban Board</h1>
+                    <p class="text-slate-500 text-sm">Drag and drop tasks between columns</p>
+                </div>
+                <div class="flex gap-3">
+                    <select id="project_filter" onchange="filterByProject(this.value)" class="text-slate-900 border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Projects</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" {% if selected_project_id == project.id %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Kanban Columns -->
+            <div class="grid grid-cols-4 gap-6">
+                <!-- TODO Column -->
+                <div class="kanban-column bg-slate-100 rounded-xl p-4 border-2 border-slate-200" 
+                     data-status="todo"
+                     ondrop="drop(event)" 
+                     ondragover="allowDrop(event)"
+                     ondragleave="dragLeave(event)">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                            <span class="w-3 h-3 bg-slate-500 rounded-full"></span>
+                            TO DO
+                        </h3>
+                        <span class="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-1 rounded">
+                            {{ tasks|selectattr('actual_progress', 'equalto', 0.0)|list|length }}
+                        </span>
+                    </div>
+                    <div class="space-y-3">
+                        {% for task in tasks %}
+                        {% if task.actual_progress == 0 %}
+                        <div class="task-card bg-white rounded-lg p-4 border border-slate-200 shadow-sm"
+                             draggable="true"
+                             ondragstart="drag(event)"
+                             data-task-id="{{ task.id }}">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-semibold text-sm text-slate-800 flex-1">{{ task.task_name }}</h4>
+                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-bold ml-2">
+                                    {{ task.task_type }}
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-500 mb-2">
+                                Project #{{ task.project_id }}
+                            </div>
+                            {% if task.assigned_resource_id %}
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="px-2 py-1 bg-green-50 text-green-700 rounded font-semibold">
+                                    Resource #{{ task.assigned_resource_id }}
+                                </span>
+                            </div>
+                            {% else %}
+                            <div class="text-xs text-slate-400">Unassigned</div>
+                            {% endif %}
+                            <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Weight: {{ task.weight_score }}</span>
+                                <a href="/tasks/{{ task.id }}/edit" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- IN PROGRESS Column -->
+                <div class="kanban-column bg-blue-50 rounded-xl p-4 border-2 border-blue-200" 
+                     data-status="in_progress"
+                     ondrop="drop(event)" 
+                     ondragover="allowDrop(event)"
+                     ondragleave="dragLeave(event)">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-blue-700 flex items-center gap-2">
+                            <span class="w-3 h-3 bg-blue-500 rounded-full"></span>
+                            IN PROGRESS
+                        </h3>
+                        <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                            {{ tasks|selectattr('actual_progress', 'gt', 0.0)|selectattr('actual_progress', 'lt', 100.0)|list|length }}
+                        </span>
+                    </div>
+                    <div class="space-y-3">
+                        {% for task in tasks %}
+                        {% if task.actual_progress > 0 and task.actual_progress < 100 %}
+                        <div class="task-card bg-white rounded-lg p-4 border border-blue-200 shadow-sm"
+                             draggable="true"
+                             ondragstart="drag(event)"
+                             data-task-id="{{ task.id }}">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-semibold text-sm text-slate-800 flex-1">{{ task.task_name }}</h4>
+                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-bold ml-2">
+                                    {{ task.task_type }}
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-500 mb-2">
+                                Project #{{ task.project_id }}
+                            </div>
+                            {% if task.assigned_resource_id %}
+                            <div class="flex items-center gap-2 text-xs mb-2">
+                                <span class="px-2 py-1 bg-green-50 text-green-700 rounded font-semibold">
+                                    Resource #{{ task.assigned_resource_id }}
+                                </span>
+                            </div>
+                            {% else %}
+                            <div class="text-xs text-slate-400 mb-2">Unassigned</div>
+                            {% endif %}
+                            <!-- Progress Bar -->
+                            <div class="mb-2">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs text-slate-600">Progress</span>
+                                    <span class="text-xs font-bold text-blue-600">{{ task.actual_progress }}%</span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                    <div class="bg-blue-500 h-1.5 rounded-full" style="width: {{ task.actual_progress }}%"></div>
+                                </div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Weight: {{ task.weight_score }}</span>
+                                <a href="/tasks/{{ task.id }}/edit" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- REVIEW Column -->
+                <div class="kanban-column bg-yellow-50 rounded-xl p-4 border-2 border-yellow-200" 
+                     data-status="review"
+                     ondrop="drop(event)" 
+                     ondragover="allowDrop(event)"
+                     ondragleave="dragLeave(event)">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-yellow-700 flex items-center gap-2">
+                            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                            REVIEW
+                        </h3>
+                        <span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded">0</span>
+                    </div>
+                    <div class="space-y-3">
+                        <!-- Placeholder for tasks in review -->
+                        <div class="text-center py-8 text-xs text-slate-400">
+                            Drag tasks here for review
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DONE Column -->
+                <div class="kanban-column bg-green-50 rounded-xl p-4 border-2 border-green-200" 
+                     data-status="done"
+                     ondrop="drop(event)" 
+                     ondragover="allowDrop(event)"
+                     ondragleave="dragLeave(event)">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-green-700 flex items-center gap-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            DONE
+                        </h3>
+                        <span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">
+                            {{ tasks|selectattr('actual_progress', 'equalto', 100.0)|list|length }}
+                        </span>
+                    </div>
+                    <div class="space-y-3">
+                        {% for task in tasks %}
+                        {% if task.actual_progress == 100 %}
+                        <div class="task-card bg-white rounded-lg p-4 border border-green-200 shadow-sm"
+                             draggable="true"
+                             ondragstart="drag(event)"
+                             data-task-id="{{ task.id }}">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-semibold text-sm text-slate-800 flex-1 line-through opacity-60">{{ task.task_name }}</h4>
+                                <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded font-bold ml-2">
+                                    ✓
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-500 mb-2">
+                                Project #{{ task.project_id }}
+                            </div>
+                            {% if task.assigned_resource_id %}
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="px-2 py-1 bg-green-50 text-green-700 rounded font-semibold">
+                                    Resource #{{ task.assigned_resource_id }}
+                                </span>
+                            </div>
+                            {% else %}
+                            <div class="text-xs text-slate-400">Unassigned</div>
+                            {% endif %}
+                            <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center">
+                                <span class="text-xs text-green-600 font-bold">✓ Completed</span>
+                                <a href="/tasks/{{ task.id }}/edit" class="text-xs text-blue-600 hover:text-blue-800 font-medium">View</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    function drag(event) {
+        event.dataTransfer.setData("taskId", event.target.dataset.taskId);
+        event.target.classList.add('dragging');
+    }
+
+    function allowDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('drag-over');
+    }
+
+    function dragLeave(event) {
+        event.currentTarget.classList.remove('drag-over');
+    }
+
+    async function drop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('drag-over');
+        
+        const taskId = event.dataTransfer.getData("taskId");
+        const newStatus = event.currentTarget.dataset.status;
+        
+        // Map status to progress
+        let newProgress = 0;
+        if (newStatus === 'todo') newProgress = 0;
+        else if (newStatus === 'in_progress') newProgress = 50;
+        else if (newStatus === 'review') newProgress = 90;
+        else if (newStatus === 'done') newProgress = 100;
+        
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/progress`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `progress=${newProgress}`
+            });
+            
+            if (response.ok) {
+                // Reload page to show updated columns
+                location.reload();
+            } else {
+                alert('Failed to update task status');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error updating task');
+        }
+    }
+
+    function filterByProject(projectId) {
+        if (projectId) {
+            window.location.href = `/kanban?project_id=${projectId}`;
+        } else {
+            window.location.href = '/kanban';
+        }
+    }
+
+    // Remove dragging class when drag ends
+    document.addEventListener('dragend', function(event) {
+        event.target.classList.remove('dragging');
+    });
+    </script>
+</body>
+</html>
+

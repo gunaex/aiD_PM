@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aiD_PM | Control Tower</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+            <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-600 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Global Control Tower</h1>
+                    <p class="text-slate-500 text-sm">Real-time overview across all active projects.</p>
+                </div>
+                <button onclick="window.location.href='/projects/create'"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition">
+                    + New Project
+                </button>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="text-slate-500 text-xs font-bold uppercase mb-1">Active Projects</div>
+                    <div class="text-3xl font-bold">{{ projects_with_progress|length }}</div>
+                    <div class="text-xs text-slate-500 mt-1">Total workstreams</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-red-500">
+                    <div class="text-slate-500 text-xs font-bold uppercase mb-1">Critical Blockers</div>
+                    <div class="text-3xl font-bold text-red-600">{{ admin_tasks|length }}</div>
+                    <div class="text-xs text-slate-500 mt-1">Pending admin tasks</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-blue-500">
+                    <div class="text-slate-500 text-xs font-bold uppercase mb-1">Avg Progress</div>
+                    <div class="text-3xl font-bold text-blue-600">
+                        {% if projects_with_progress|length > 0 %}
+                        {{ (projects_with_progress|map(attribute='progress')|sum /
+                        projects_with_progress|length)|round(1) }}%
+                        {% else %}
+                        0%
+                        {% endif %}
+                    </div>
+                    <div class="text-xs text-slate-500 mt-1">Across all projects</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="text-slate-500 text-xs font-bold uppercase mb-1">Week Ending</div>
+                    <div class="text-xl font-bold">{{ current_date }}</div>
+                    <div class="text-xs text-slate-500 mt-1">Current reporting period</div>
+                </div>
+            </div>
+
+            <!-- Projects Table -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-slate-800">Active Workstreams</h3>
+                        <p class="text-xs text-slate-500 mt-1">Real-time progress tracking with value-based calculation
+                        </p>
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium">Auto-synced with Excel Templates</span>
+                </div>
+
+                {% if projects_with_progress|length > 0 %}
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                        <tr>
+                            <th class="px-6 py-4">Project Name</th>
+                            <th class="px-6 py-4">Methodology</th>
+                            <th class="px-6 py-4">Progress</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for item in projects_with_progress %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-6 py-4">
+                                <div>
+                                    <div class="font-semibold text-slate-700">{{ item.project.name }}</div>
+                                    <div class="text-xs text-slate-500">{{ item.task_count }} tasks ({{
+                                        item.completed_tasks }} done)</div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold">
+                                    {{ item.project.methodology }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 w-64">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1 bg-slate-100 rounded-full h-2">
+                                        <div class="{% if item.progress >= 80 %}bg-green-500{% elif item.progress >= 50 %}bg-blue-500{% elif item.progress >= 25 %}bg-yellow-500{% else %}bg-red-500{% endif %} h-2 rounded-full transition-all duration-500"
+                                            style="width: {{ item.progress }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-600">{{ item.progress }}%</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if item.project.is_recovery_mode %}
+                                <span class="px-2 py-1 bg-red-50 text-red-600 rounded text-xs font-bold">RECOVERY</span>
+                                {% else %}
+                                <span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs font-bold">ON
+                                    TRACK</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex gap-2 justify-center">
+                                    <a href="/projects/{{ item.project.id }}/details"
+                                        class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded transition">
+                                        View
+                                    </a>
+                                    <a href="/export/weekly/{{ item.project.id }}"
+                                        class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-3 rounded border border-slate-300 transition">
+                                        Export
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="p-12 text-center">
+                    <div class="text-5xl mb-4">🚀</div>
+                    <h3 class="text-lg font-bold text-slate-700 mb-2">No Projects Yet</h3>
+                    <p class="text-slate-500 mb-6">Create your first project to start tracking progress</p>
+                    <button onclick="window.location.href='/projects/create'"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition">
+                        + Create First Project
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleRecoveryMode(isEnabled) {
+            if (isEnabled) {
+                alert('Recovery Mode Activated: System will prioritize high-risk tasks');
+            }
+        }
+    </script>
+</body>
+
+</html>

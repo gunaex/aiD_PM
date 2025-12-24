@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+
+        .calendar-day {
+            min-height: 100px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .calendar-day:hover {
+            background: #f1f5f9;
+            transform: scale(1.02);
+        }
+
+        .calendar-day.has-events {
+            background: #eff6ff;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .calendar-day.has-deadline {
+            background: #fef2f2;
+            border-left: 3px solid #ef4444;
+        }
+
+        .calendar-day.today {
+            background: #dbeafe;
+            border: 2px solid #2563eb;
+        }
+
+        .event-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 2px;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+            <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Calendar</a>
+
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Interactive Calendar</h1>
+                    <p class="text-slate-500 text-sm">Full year view with tasks and deadlines</p>
+                </div>
+                <div class="flex gap-3">
+                    <select id="project_filter" onchange="filterByProject(this.value)"
+                        class="text-slate-900 border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Projects</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% for month in range(1, 13) %}
+                    <button onclick="jumpToMonth({{ month }})"
+                        class="px-3 py-1 text-xs rounded {% if month == current_month %}bg-blue-600 text-white{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700{% endif %} transition">
+                        {{ ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month-1]
+                        }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <!-- Days of Week Header -->
+                <div class="grid grid-cols-7 bg-slate-900 text-white">
+                    <div class="p-3 text-center font-bold text-sm">Sunday</div>
+                    <div class="p-3 text-center font-bold text-sm">Monday</div>
+                    <div class="p-3 text-center font-bold text-sm">Tuesday</div>
+                    <div class="p-3 text-center font-bold text-sm">Wednesday</div>
+                    <div class="p-3 text-center font-bold text-sm">Thursday</div>
+                    <div class="p-3 text-center font-bold text-sm">Friday</div>
+                    <div class="p-3 text-center font-bold text-sm">Saturday</div>
+                </div>
+
+                <!-- Calendar Days -->
+                <div id="calendar-grid" class="grid grid-cols-7 border-t border-slate-200">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Event Details Modal -->
+            <div id="event-modal"
+                class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full m-4 max-h-[80vh] overflow-y-auto">
+                    <div
+                        class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-900 text-white rounded-t-xl">
+                        <h3 id="modal-title" class="text-xl font-bold">Events</h3>
+                        <button onclick="closeModal()" class="text-white hover:text-slate-300 text-2xl">×</button>
+                    </div>
+                    <div id="modal-content" class="p-6">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <h3 class="font-bold text-slate-800 mb-4">Legend</h3>
+                <div class="flex gap-6 flex-wrap text-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-blue-100 border-l-4 border-blue-500 rounded"></div>
+                        <span class="text-slate-900">Has Tasks</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-red-100 border-l-4 border-red-500 rounded"></div>
+                        <span class="text-slate-900">Has Deadlines</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-blue-200 border-2 border-blue-600 rounded"></div>
+                        <span class="text-slate-900">Today</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="event-dot bg-green-500"></span>
+                        <span class="text-slate-900">Completed Task</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="event-dot bg-yellow-500"></span>
+                        <span class="text-slate-900">In Progress</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="event-dot bg-slate-400"></span>
+                        <span class="text-slate-900">Not Started</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Data from backend
+        const tasksData = {{ tasks_json| safe }};
+        let currentMonth = {{ current_month }};
+        let currentYear = {{ current_year }};
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            // Get first day of month and total days
+            const firstDay = new Date(currentYear, currentMonth - 1, 1);
+            const lastDay = new Date(currentYear, currentMonth, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+
+            const today = new Date();
+            const isCurrentMonth = today.getMonth() === currentMonth - 1 && today.getFullYear() === currentYear;
+
+            // Add empty cells for days before month starts
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day border border-slate-200 bg-slate-50';
+                grid.appendChild(emptyDay);
+            }
+
+            // Add days of month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayElement = createDayElement(day, dateStr, isCurrentMonth && today.getDate() === day);
+                grid.appendChild(dayElement);
+            }
+
+            // Update header
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('current-month').textContent = monthNames[currentMonth - 1] + ' ' + currentYear;
+        }
+
+        function createDayElement(day, dateStr, isToday) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day border border-slate-200 p-2';
+
+            // Find events for this day
+            const dayTasks = tasksData.filter(t => {
+                return (t.planned_start && t.planned_start === dateStr) ||
+                    (t.planned_end && t.planned_end === dateStr) ||
+                    (t.planned_start && t.planned_end && dateStr >= t.planned_start && dateStr <= t.planned_end);
+            });
+
+            const deadlines = tasksData.filter(t => t.planned_end === dateStr);
+
+            // Add classes
+            if (isToday) dayDiv.classList.add('today');
+            if (dayTasks.length > 0) dayDiv.classList.add('has-events');
+            if (deadlines.length > 0) dayDiv.classList.add('has-deadline');
+
+            // Day number
+            const dayNum = document.createElement('div');
+            dayNum.className = 'font-bold text-slate-700 mb-1';
+            dayNum.textContent = day;
+            dayDiv.appendChild(dayNum);
+
+            // Event dots
+            if (dayTasks.length > 0) {
+                const dotsDiv = document.createElement('div');
+                dotsDiv.className = 'flex flex-wrap gap-1 mb-1';
+
+                dayTasks.slice(0, 5).forEach(task => {
+                    const dot = document.createElement('span');
+                    dot.className = 'event-dot';
+                    if (task.actual_progress === 100) {
+                        dot.classList.add('bg-green-500');
+                    } else if (task.actual_progress > 0) {
+                        dot.classList.add('bg-yellow-500');
+                    } else {
+                        dot.classList.add('bg-slate-400');
+                    }
+                    dot.title = task.task_name;
+                    dotsDiv.appendChild(dot);
+                });
+
+                if (dayTasks.length > 5) {
+                    const more = document.createElement('span');
+                    more.className = 'text-xs text-slate-500';
+                    more.textContent = `+${dayTasks.length - 5}`;
+                    dotsDiv.appendChild(more);
+                }
+
+                dayDiv.appendChild(dotsDiv);
+            }
+
+            // Event count
+            if (dayTasks.length > 0) {
+                const count = document.createElement('div');
+                count.className = 'text-xs font-semibold text-blue-600';
+                count.textContent = `${dayTasks.length} event${dayTasks.length > 1 ? 's' : ''}`;
+                dayDiv.appendChild(count);
+            }
+
+            // Click handler
+            dayDiv.onclick = () => showDayEvents(day, dayTasks, deadlines);
+
+            return dayDiv;
+        }
+
+        function showDayEvents(day, tasks, deadlines) {
+            const modal = document.getElementById('event-modal');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
+            title.textContent = `${monthNames[currentMonth - 1]} ${day}, ${currentYear}`;
+
+            if (tasks.length === 0) {
+                content.innerHTML = '<p class="text-slate-500 text-center py-8">No events on this day</p>';
+            } else {
+                let html = '<div class="space-y-3">';
+
+                tasks.forEach(task => {
+                    const isDeadline = deadlines.some(d => d.id === task.id);
+                    html += `
+                    <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-start justify-between mb-2">
+                            <h4 class="font-semibold text-slate-800">${task.task_name}</h4>
+                            ${isDeadline ? '<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-bold">DEADLINE</span>' : ''}
+                        </div>
+                        <div class="text-sm text-slate-600 space-y-1">
+                            <div>Project: #${task.project_id}</div>
+                            <div>Type: <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">${task.task_type}</span></div>
+                            <div>Progress: <span class="font-bold ${task.actual_progress === 100 ? 'text-green-600' : task.actual_progress > 0 ? 'text-yellow-600' : 'text-slate-600'}">${task.actual_progress}%</span></div>
+                            ${task.planned_start ? `<div>Start: ${task.planned_start}</div>` : ''}
+                            ${task.planned_end ? `<div>End: ${task.planned_end}</div>` : ''}
+                        </div>
+                        <div class="mt-3">
+                            <a href="/tasks/${task.id}/edit" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-medium transition">
+                                View Task →
+                            </a>
+                        </div>
+                    </div>
+                `;
+                });
+
+                html += '</div>';
+                content.innerHTML = html;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('event-modal').classList.add('hidden');
+        }
+
+        function previousMonth() {
+            currentMonth--;
+            if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            }
+            updateURL();
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            }
+            updateURL();
+            renderCalendar();
+        }
+
+        function jumpToMonth(month) {
+            currentMonth = month;
+            updateURL();
+            renderCalendar();
+        }
+
+        function updateURL() {
+            const projectId = document.getElementById('project_filter').value;
+            let url = `/calendar-grid?month=${currentMonth}&year=${currentYear}`;
+            if (projectId) url += `&project_id=${projectId}`;
+            window.history.pushState({}, '', url);
+            location.reload(); // Reload to get updated data
+        }
+
+        function filterByProject(projectId) {
+            let url = `/calendar-grid?month=${currentMonth}&year=${currentYear}`;
+            if (projectId) url += `&project_id=${projectId}`;
+            window.location.href = url;
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Initial render
+        renderCalendar();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gantt Chart | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+
+        /* Gantt Chart Styles */
+        .gantt-container {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+
+        .gantt-timeline {
+            display: grid;
+            gap: 1px;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+        }
+
+        .gantt-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #1e293b;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 8px 4px;
+            text-align: center;
+            border-right: 1px solid #475569;
+        }
+
+        .gantt-task-label {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: white;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border-right: 2px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            min-width: 200px;
+        }
+
+        .gantt-cell {
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            position: relative;
+            min-height: 40px;
+        }
+
+        .gantt-bar {
+            position: absolute;
+            height: 24px;
+            top: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .gantt-bar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .gantt-bar-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .today-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #ef4444;
+            z-index: 15;
+        }
+
+        .today-marker {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            background: #ef4444;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .milestone {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #8b5cf6;
+            transform: rotate(45deg);
+            top: 12px;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+                        <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+                
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden flex flex-col">
+            <!-- Header -->
+            <div class="p-8 pb-4">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-800">Gantt Chart</h1>
+                        <p class="text-slate-500 text-sm">Project timeline and task dependencies</p>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <!-- Project Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-bold text-slate-700">Project:</label>
+                        <select id="project_filter" onchange="filterByProject(this.value)"
+                            class="text-slate-900 border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Projects</option>
+                            {% for project in projects %}
+                            <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{% endif
+                                %}>
+                                {{ project.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- View Mode -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-bold text-slate-700">View:</label>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                            <button onclick="changeView('daily')" id="btn-daily"
+                                class="px-4 py-2 text-xs font-bold rounded transition view-btn">
+                                Daily
+                            </button>
+                            <button onclick="changeView('weekly')" id="btn-weekly"
+                                class="px-4 py-2 text-xs font-bold rounded transition view-btn bg-blue-600 text-white">
+                                Weekly
+                            </button>
+                            <button onclick="changeView('monthly')" id="btn-monthly"
+                                class="px-4 py-2 text-xs font-bold rounded transition view-btn">
+                                Monthly
+                            </button>
+                            <button onclick="changeView('overall')" id="btn-overall"
+                                class="px-4 py-2 text-xs font-bold rounded transition view-btn">
+                                Overall
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="ml-auto flex items-center gap-4 text-xs text-slate-900 font-bold">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                            <span>Development</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 bg-green-500 rounded"></div>
+                            <span>Admin</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 bg-purple-500 rounded"></div>
+                            <span>Procurement</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-4 bg-red-500"></div>
+                            <span>Today</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gantt Chart -->
+            <div class="px-8 pb-8 flex-1 overflow-hidden">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm h-full flex flex-col">
+                    {% if tasks|length > 0 %}
+                    <!-- Stats -->
+                    <div class="p-4 border-b border-slate-100 flex gap-6 text-xs">
+                        <div>
+                            <span class="text-slate-500">Total Tasks:</span>
+                            <span class="font-bold text-slate-800 ml-1">{{ tasks|length }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Date Range:</span>
+                            <span class="font-bold text-slate-800 ml-1">{{ date_range.start }} - {{ date_range.end
+                                }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Duration:</span>
+                            <span class="font-bold text-slate-800 ml-1">{{ date_range.duration }} days</span>
+                        </div>
+                    </div>
+
+                    <!-- Gantt Container -->
+                    <div id="gantt-container" class="gantt-container flex-1 p-4">
+                        <div id="gantt-chart"></div>
+                    </div>
+                    {% else %}
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="text-5xl mb-4">📊</div>
+                            <h3 class="text-lg font-bold text-slate-700 mb-2">No Tasks to Display</h3>
+                            <p class="text-slate-500 mb-6">Add tasks with planned dates to see Gantt chart</p>
+                            {% if selected_project_id %}
+                            <a href="/tasks/create?project_id={{ selected_project_id }}"
+                                class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition">
+                                + Add Task
+                            </a>
+                            {% else %}
+                            <a href="/projects/create"
+                                class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition">
+                                + Create Project
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Data from backend
+        const tasks = {{ tasks_json| safe }};
+        const dateRange = {{ date_range_json| safe }};
+        let currentView = 'weekly';
+
+        function changeView(view) {
+            currentView = view;
+
+            // Update button styles
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-slate-600');
+            });
+            document.getElementById(`btn-${view}`).classList.add('bg-blue-600', 'text-white');
+            document.getElementById(`btn-${view}`).classList.remove('text-slate-600');
+
+            renderGantt();
+        }
+
+        function filterByProject(projectId) {
+            if (projectId) {
+                window.location.href = `/gantt?project_id=${projectId}`;
+            } else {
+                window.location.href = '/gantt';
+            }
+        }
+
+        function getTaskColor(taskType) {
+            const colors = {
+                'Dev': '#3b82f6',
+                'Admin': '#22c55e',
+                'Procurement': '#a855f7',
+                'Fix': '#f59e0b'
+            };
+            return colors[taskType] || '#6b7280';
+        }
+
+        function renderGantt() {
+            if (tasks.length === 0) return;
+
+            const container = document.getElementById('gantt-chart');
+            const startDate = new Date(dateRange.start);
+            const endDate = new Date(dateRange.end);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Calculate time periods based on view
+            let periods = [];
+            let periodLabel = '';
+
+            if (currentView === 'daily') {
+                // Daily view: each column is 1 day
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    periods.push({
+                        date: new Date(d),
+                        label: `${d.getDate()}/${d.getMonth() + 1}`
+                    });
+                }
+            } else if (currentView === 'weekly') {
+                // Weekly view: each column is 1 week
+                let currentWeekStart = new Date(startDate);
+                while (currentWeekStart <= endDate) {
+                    const weekEnd = new Date(currentWeekStart);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    periods.push({
+                        date: new Date(currentWeekStart),
+                        endDate: weekEnd,
+                        label: `W${getWeekNumber(currentWeekStart)}`
+                    });
+                    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+                }
+            } else if (currentView === 'monthly') {
+                // Monthly view: each column is 1 month
+                let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+                while (currentMonth <= endDate) {
+                    periods.push({
+                        date: new Date(currentMonth),
+                        label: currentMonth.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+                    });
+                    currentMonth.setMonth(currentMonth.getMonth() + 1);
+                }
+            } else {
+                // Overall view: divide into quarters
+                const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                const quarterDays = Math.ceil(totalDays / 4);
+                for (let i = 0; i < 4; i++) {
+                    const quarterStart = new Date(startDate);
+                    quarterStart.setDate(quarterStart.getDate() + (i * quarterDays));
+                    periods.push({
+                        date: quarterStart,
+                        label: `Q${i + 1}`
+                    });
+                }
+            }
+
+            // Build grid
+            const cols = periods.length + 1; // +1 for task label column
+            const rows = tasks.length + 1; // +1 for header
+
+            container.style.gridTemplateColumns = `200px repeat(${periods.length}, minmax(80px, 1fr))`;
+            container.classList.add('gantt-timeline');
+
+            let html = '';
+
+            // Header row
+            html += '<div class="gantt-header" style="grid-column: 1;">Task Name</div>';
+            periods.forEach((period, index) => {
+                html += `<div class="gantt-header" style="grid-column: ${index + 2};">${period.label}</div>`;
+            });
+
+            // Task rows
+            tasks.forEach((task, taskIndex) => {
+                // Task label
+                html += `<div class="gantt-task-label" style="grid-row: ${taskIndex + 2}; grid-column: 1;">
+                <div class="flex-1">
+                    <div class="font-semibold text-slate-800 truncate">${task.task_name}</div>
+                    <div class="text-xs text-slate-500">Project #${task.project_id}</div>
+                </div>
+                <span class="text-xs font-bold ml-2 ${task.actual_progress === 100 ? 'text-green-600' : 'text-blue-600'}">
+                    ${task.actual_progress}%
+                </span>
+            </div>`;
+
+                // Timeline cells
+                periods.forEach((period, periodIndex) => {
+                    const cellId = `cell-${taskIndex}-${periodIndex}`;
+                    html += `<div class="gantt-cell" id="${cellId}" 
+                         style="grid-row: ${taskIndex + 2}; grid-column: ${periodIndex + 2};"></div>`;
+                });
+            });
+
+            container.innerHTML = html;
+
+            // Draw task bars
+            tasks.forEach((task, taskIndex) => {
+                if (!task.planned_start || !task.planned_end) return;
+
+                const taskStart = new Date(task.planned_start);
+                const taskEnd = new Date(task.planned_end);
+
+                // Find start and end period indices
+                let startPeriodIdx = -1;
+                let endPeriodIdx = -1;
+
+                periods.forEach((period, idx) => {
+                    const periodEnd = periods[idx + 1] ? periods[idx + 1].date : endDate;
+
+                    if (taskStart >= period.date && taskStart < periodEnd && startPeriodIdx === -1) {
+                        startPeriodIdx = idx;
+                    }
+                    if (taskEnd >= period.date && taskEnd < periodEnd) {
+                        endPeriodIdx = idx;
+                    }
+                });
+
+                if (startPeriodIdx === -1) startPeriodIdx = 0;
+                if (endPeriodIdx === -1) endPeriodIdx = periods.length - 1;
+
+                // Calculate position within cells
+                const span = endPeriodIdx - startPeriodIdx + 1;
+                const startCell = document.getElementById(`cell-${taskIndex}-${startPeriodIdx}`);
+
+                if (startCell) {
+                    const bar = document.createElement('div');
+                    bar.className = 'gantt-bar';
+                    bar.style.backgroundColor = getTaskColor(task.task_type);
+                    bar.style.width = `${span * 100}%`;
+                    bar.title = `${task.task_name}\n${task.planned_start} to ${task.planned_end}\nProgress: ${task.actual_progress}%`;
+                    bar.onclick = () => window.location.href = `/tasks/${task.id}/edit`;
+
+                    // Progress indicator
+                    const progress = document.createElement('div');
+                    progress.className = 'gantt-bar-progress';
+                    progress.style.width = `${task.actual_progress}%`;
+                    bar.appendChild(progress);
+
+                    // Label
+                    const label = document.createElement('span');
+                    label.style.position = 'relative';
+                    label.style.zIndex = '1';
+                    label.textContent = `${task.actual_progress}%`;
+                    bar.appendChild(label);
+
+                    startCell.appendChild(bar);
+                }
+            });
+
+            // Draw today line
+            if (today >= startDate && today <= endDate) {
+                let todayPeriodIdx = -1;
+                periods.forEach((period, idx) => {
+                    const periodEnd = periods[idx + 1] ? periods[idx + 1].date : endDate;
+                    if (today >= period.date && today < periodEnd) {
+                        todayPeriodIdx = idx;
+                    }
+                });
+
+                if (todayPeriodIdx !== -1) {
+                    const todayCell = document.getElementById(`cell-0-${todayPeriodIdx}`);
+                    if (todayCell) {
+                        const todayLine = document.createElement('div');
+                        todayLine.className = 'today-line';
+                        todayLine.style.left = '50%';
+
+                        const marker = document.createElement('div');
+                        marker.className = 'today-marker';
+                        marker.textContent = 'TODAY';
+                        todayLine.appendChild(marker);
+
+                        todayCell.appendChild(todayLine);
+                    }
+                }
+            }
+        }
+
+        function getWeekNumber(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        // Initial render
+        if (tasks.length > 0) {
+            renderGantt();
+        }
+    </script>
+</body>
+
+</html>

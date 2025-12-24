@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Tracking | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+.sidebar-item-active { border-right: 4px solid #3b82f6; background: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+                        <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+                
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold text-slate-800">Daily Progress Tracking</h1>
+                <p class="text-slate-500 text-sm">Update task progress - data is automatically aggregated into weekly snapshots</p>
+            </div>
+
+            <!-- Project Filter -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="flex items-center gap-4">
+                    <label class="text-sm font-bold text-slate-700">Filter by Project:</label>
+                    <select id="project_filter" onchange="filterByProject(this.value)" class="text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Projects</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" {% if selected_project_id == project.id %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    {% if selected_project_id %}
+                    <button onclick="takeSnapshot({{ selected_project_id }})" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition text-sm">
+                        Take Weekly Snapshot
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Daily Task Tracking Table -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                    <h3 class="font-bold">Daily Progress Update</h3>
+                    <span class="text-xs opacity-70">Data is automatically saved to Local DB</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold">
+                            <tr>
+                                <th class="px-6 py-3">Task Name</th>
+                                <th class="px-6 py-3">Task Type</th>
+                                <th class="px-6 py-3">Assignee</th>
+                                <th class="px-6 py-3">Weight</th>
+                                <th class="px-6 py-3">Progress (%)</th>
+                                <th class="px-6 py-3">Last Update</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for task in tasks %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 font-medium text-slate-700 text-sm">{{ task.task_name }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold">
+                                        {{ task.task_type }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if task.assigned_resource_id %}
+                                    <span class="inline-flex items-center px-2 py-1 bg-slate-100 rounded text-xs font-semibold">
+                                        Resource #{{ task.assigned_resource_id }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-xs text-slate-400">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-xs font-bold text-slate-400">{{ task.weight_score }}</td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-4">
+                                        <input type="range" min="0" max="100" value="{{ task.actual_progress }}" 
+                                               class="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                               onchange="updateProgress({{ task.id }}, this.value)"
+                                               oninput="updateLabel({{ task.id }}, this.value)">
+                                        <span id="label-{{ task.id }}" class="text-xs font-mono font-bold w-12 text-right">{{ task.actual_progress }}%</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-[10px] text-slate-400">
+                                    <span id="time-{{ task.id }}">{{ current_time }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    function updateLabel(taskId, value) {
+        document.getElementById(`label-${taskId}`).innerText = value + '%';
+    }
+
+    async function updateProgress(taskId, value) {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/progress`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `progress=${value}`
+            });
+            
+            if (response.ok) {
+                // Update timestamp
+                const now = new Date();
+                document.getElementById(`time-${taskId}`).innerText = now.toISOString().slice(0, 19).replace('T', ' ');
+                
+                // Show success feedback
+                const label = document.getElementById(`label-${taskId}`);
+                label.classList.add('text-green-600');
+                setTimeout(() => {
+                    label.classList.remove('text-green-600');
+                }, 1000);
+            }
+        } catch (error) {
+            console.error('Error updating progress:', error);
+            alert('Failed to update progress');
+        }
+    }
+
+    function filterByProject(projectId) {
+        if (projectId) {
+            window.location.href = `/daily-tracking?project_id=${projectId}`;
+        } else {
+            window.location.href = '/daily-tracking';
+        }
+    }
+
+    async function takeSnapshot(projectId) {
+        if (confirm('Take weekly snapshot for this project? This will record current progress.')) {
+            try {
+                const response = await fetch(`/projects/${projectId}/take-snapshot`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Snapshot recorded! Actual progress: ${data.actual_acc.toFixed(2)}%`);
+                } else {
+                    alert('Failed to take snapshot');
+                }
+            } catch (error) {
+                console.error('Error taking snapshot:', error);
+                alert('Error taking snapshot');
+            }
+        }
+    }
+    </script>
+</body>
+</html>
+

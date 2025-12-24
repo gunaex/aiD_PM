@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Task | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+            <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <div class="max-w-3xl mx-auto">
+                <!-- Header -->
+                <div class="mb-8">
+                    <h1 class="text-2xl font-bold text-slate-800">Edit Task</h1>
+                    <p class="text-slate-500 text-sm">Update task information and assignment</p>
+                </div>
+
+                <!-- Breadcrumb -->
+                <div class="flex items-center gap-2 text-sm mb-6">
+                    <a href="/" class="text-blue-600 hover:underline">Dashboard</a>
+                    <span class="text-slate-400">→</span>
+                    <a href="/projects/list" class="text-blue-600 hover:underline">Projects</a>
+                    <span class="text-slate-400">→</span>
+                    <a href="/projects/{{ task.project_id }}/details" class="text-blue-600 hover:underline">Project #{{
+                        task.project_id }}</a>
+                    <span class="text-slate-400">→</span>
+                    <span class="text-slate-600 font-bold">Edit Task</span>
+                </div>
+
+                <!-- Form Card -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                    <form action="/tasks/{{ task.id }}/edit" method="POST" class="space-y-6">
+
+                        <!-- Task Name -->
+                        <div>
+                            <label for="task_name" class="block text-sm font-bold text-slate-700 mb-2">
+                                Task Name <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="task_name" name="task_name" value="{{ task.task_name }}"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required>
+                        </div>
+
+                        <!-- Task Type -->
+                        <div>
+                            <label for="task_type" class="block text-sm font-bold text-slate-700 mb-2">
+                                Task Type <span class="text-red-500">*</span>
+                            </label>
+                            <select id="task_type" name="task_type"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                onchange="handleTaskTypeChange(this.value)" required>
+                                <option value="Dev" {% if task.task_type=='Dev' %}selected{% endif %}>Development
+                                </option>
+                                <option value="Admin" {% if task.task_type=='Admin' %}selected{% endif %}>Administrative
+                                </option>
+                                <option value="Procurement" {% if task.task_type=='Procurement' %}selected{% endif %}>
+                                    Procurement (PR/PO)</option>
+                                <option value="Fix" {% if task.task_type=='Fix' %}selected{% endif %}>Bug Fix</option>
+                                <option value="Testing" {% if task.task_type=='Testing' %}selected{% endif %}>Testing/QA
+                                </option>
+                                <option value="Design" {% if task.task_type=='Design' %}selected{% endif %}>Design/UX
+                                </option>
+                                <option value="custom">+ Add Custom Type...</option>
+                            </select>
+                            <input type="text" id="custom_task_type" placeholder="Enter custom task type"
+                                class="hidden w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+
+                        <!-- AI Recommendation Box -->
+                        <div id="recommendation" class="hidden bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                            <p class="text-sm font-bold text-blue-800 mb-1">💡 System Suggestion</p>
+                            <p id="recommendation-text" class="text-sm text-blue-700"></p>
+                        </div>
+
+                        <!-- Assigned Resources (Multi-select) -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                Assign Team Members (Multiple) ⭐
+                            </label>
+                            <div
+                                class="text-slate-900 border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto bg-white">
+                                {% for resource in resources %}
+                                <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                                    <input type="checkbox" name="resource_ids" value="{{ resource.id }}" {% if
+                                        task.assigned_resource_id==resource.id %}checked{% endif %}
+                                        class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                    <div class="flex-1">
+                                        <div class="font-medium text-sm text-slate-800">{{ resource.full_name }}</div>
+                                        <div class="text-xs text-slate-500">{{ resource.nickname }} • {{
+                                            resource.position }}</div>
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">✅ Select multiple team members</p>
+                        </div>
+
+                        <!-- Weight Score -->
+                        <div>
+                            <label for="weight_score" class="block text-sm font-bold text-slate-700 mb-2">
+                                Weight Score <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" id="weight_score" name="weight_score" min="0.1" step="0.1"
+                                value="{{ task.weight_score }}"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required>
+                            <p class="text-xs text-slate-500 mt-1">Task importance/complexity</p>
+                        </div>
+
+                        <!-- Progress -->
+                        <div>
+                            <label for="actual_progress" class="block text-sm font-bold text-slate-700 mb-2">
+                                Progress (%)
+                            </label>
+                            <div class="flex items-center gap-4">
+                                <input type="range" id="actual_progress" name="actual_progress" min="0" max="100"
+                                    value="{{ task.actual_progress }}" class="flex-1"
+                                    oninput="updateProgressLabel(this.value)">
+                                <span id="progress-label" class="text-2xl font-bold text-blue-600 w-16 text-right">{{
+                                    task.actual_progress }}%</span>
+                            </div>
+                        </div>
+
+                        <!-- Planned Dates -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="planned_start" class="block text-sm font-bold text-slate-700 mb-2">
+                                    Planned Start
+                                </label>
+                                <input type="date" id="planned_start" name="planned_start"
+                                    value="{{ task.planned_start.strftime('%Y-%m-%d') if task.planned_start else '' }}"
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label for="planned_end" class="block text-sm font-bold text-slate-700 mb-2">
+                                    Planned End
+                                </label>
+                                <input type="date" id="planned_end" name="planned_end"
+                                    value="{{ task.planned_end.strftime('%Y-%m-%d') if task.planned_end else '' }}"
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex items-center justify-between pt-6 border-t border-slate-200">
+                            <a href="/projects/{{ task.project_id }}/details"
+                                class="text-sm text-slate-600 hover:text-slate-800 font-medium">
+                                ← Back to Project
+                            </a>
+                            <div class="flex gap-3">
+                                <button type="button"
+                                    onclick="if(confirm('Delete this task?')) window.location.href='/tasks/{{ task.id }}/delete'"
+                                    class="px-6 py-3 border border-red-300 rounded-lg text-red-700 font-medium hover:bg-red-50 transition">
+                                    Delete Task
+                                </button>
+                                <button type="submit"
+                                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function updateProgressLabel(value) {
+            document.getElementById('progress-label').textContent = value + '%';
+        }
+
+        function handleTaskTypeChange(value) {
+            const customInput = document.getElementById('custom_task_type');
+            const taskTypeSelect = document.getElementById('task_type');
+
+            if (value === 'custom') {
+                customInput.classList.remove('hidden');
+                customInput.focus();
+                customInput.addEventListener('blur', function () {
+                    if (this.value.trim()) {
+                        // Add new option
+                        const newOption = document.createElement('option');
+                        newOption.value = this.value.trim();
+                        newOption.textContent = this.value.trim();
+                        newOption.selected = true;
+                        taskTypeSelect.insertBefore(newOption, taskTypeSelect.lastElementChild);
+                        customInput.classList.add('hidden');
+                        customInput.value = '';
+                        getRecommendation(newOption.value);
+                    } else {
+                        taskTypeSelect.value = 'Dev';
+                        customInput.classList.add('hidden');
+                    }
+                });
+            } else {
+                getRecommendation(value);
+            }
+        }
+
+        async function getRecommendation(taskType) {
+            if (!taskType || taskType === 'custom') {
+                document.getElementById('recommendation').classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/recommend-resource/${taskType}`);
+                const data = await response.json();
+
+                if (data.recommended_id) {
+                    document.getElementById('recommendation-text').textContent = data.reason;
+                    document.getElementById('recommendation').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error fetching recommendation:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>

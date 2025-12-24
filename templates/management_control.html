@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Control | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+
+        .control-card {
+            transition: all 0.3s ease;
+        }
+
+        .control-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+            <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+                
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-slate-50 to-slate-100 min-h-full">
+            <!-- Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-slate-800 mb-2">🎯 Management Control Center</h1>
+                <p class="text-slate-600">Critical resource management and team optimization hub</p>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-slate-500 text-xs font-bold uppercase">Total Resources</div>
+                        <div class="text-2xl">👥</div>
+                    </div>
+                    <div class="text-3xl font-bold text-slate-800">{{ total_resources }}</div>
+                    <div class="text-xs text-green-600 font-semibold mt-1">{{ active_resources }} Active</div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-slate-500 text-xs font-bold uppercase">Active Tasks</div>
+                        <div class="text-2xl">📋</div>
+                    </div>
+                    <div class="text-3xl font-bold text-blue-600">{{ total_tasks }}</div>
+                    <div class="text-xs text-slate-500 mt-1">Across all projects</div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-amber-500">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-slate-500 text-xs font-bold uppercase">Avg Workload</div>
+                        <div class="text-2xl">⚖️</div>
+                    </div>
+                    <div class="text-3xl font-bold text-amber-600">{{ avg_workload|round(1) }}</div>
+                    <div class="text-xs text-slate-500 mt-1">Tasks per resource</div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-red-500">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-slate-500 text-xs font-bold uppercase">Overloaded</div>
+                        <div class="text-2xl">⚠️</div>
+                    </div>
+                    <div class="text-3xl font-bold text-red-600">{{ overloaded_count }}</div>
+                    <div class="text-xs text-slate-500 mt-1">Resources at risk</div>
+                </div>
+            </div>
+
+            <!-- Control Modules -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- Resources Module -->
+                <div class="control-card bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-bold">Resource DNA</h3>
+                            <div class="text-3xl">🧬</div>
+                        </div>
+                        <p class="text-blue-100 text-sm">Team member profiles & capabilities</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-600">Total Members</span>
+                                <span class="font-bold text-slate-800">{{ total_resources }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-600">Skill Profiles</span>
+                                <span class="font-bold text-slate-800">{{ resources_with_skills }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-600">Avg Speed Score</span>
+                                <span class="font-bold text-slate-800">{{ avg_speed|round(1) }}/10</span>
+                            </div>
+                        </div>
+                        <a href="/resources"
+                            class="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg font-medium transition">
+                            Manage Resources →
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Workload Module -->
+                <div class="control-card bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-bold">Workload Balance</h3>
+                            <div class="text-3xl">⚖️</div>
+                        </div>
+                        <p class="text-purple-100 text-sm">Task distribution & capacity planning</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-600">Available</span>
+                                <span class="font-bold text-green-600">{{ available_resources }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-600">Balanced</span>
+                                <span class="font-bold text-blue-600">{{ balanced_resources }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-600">Overloaded</span>
+                                <span class="font-bold text-red-600">{{ overloaded_count }}</span>
+                            </div>
+                        </div>
+                        <a href="/workload"
+                            class="block w-full bg-purple-600 hover:bg-purple-700 text-white text-center py-2 rounded-lg font-medium transition">
+                            View Workload →
+                        </a>
+                    </div>
+                </div>
+
+                <!-- AI Assistant Module -->
+                <div class="control-card bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-bold">AI Assistant</h3>
+                            <div class="text-3xl">🤖</div>
+                        </div>
+                        <p class="text-emerald-100 text-sm">Smart recommendations & insights</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-3 mb-4">
+                            <div class="flex items-center gap-2 text-sm text-slate-600">
+                                <span class="text-green-500">✓</span>
+                                <span>Task Breakdown</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-slate-600">
+                                <span class="text-green-500">✓</span>
+                                <span>Resource Matching</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-slate-600">
+                                <span class="text-green-500">✓</span>
+                                <span>Risk Prediction</span>
+                            </div>
+                        </div>
+                        <a href="/ai-assistant"
+                            class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center py-2 rounded-lg font-medium transition">
+                            Open AI Tools →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <h3 class="font-bold text-slate-800 mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button onclick="window.location.href='/resources'"
+                        class="px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 transition">
+                        ➕ Add Resource
+                    </button>
+                    <button onclick="window.location.href='/workload'"
+                        class="px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 transition">
+                        📊 View Workload
+                    </button>
+                    <button onclick="window.location.href='/ai-assistant'"
+                        class="px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 transition">
+                        🤖 AI Breakdown
+                    </button>
+                    <button onclick="window.location.href='/phases'"
+                        class="px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 transition">
+                        📅 Manage Phases
+                    </button>
+                </div>
+            </div>
+
+            <!-- Team Health Indicator -->
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-6 mt-8 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold mb-1">Team Health Status</h3>
+                        <p class="text-slate-300 text-sm">Overall resource utilization and balance</p>
+                    </div>
+                    <div class="text-right">
+                        {% if overloaded_count > 0 %}
+                        <div class="text-3xl font-bold text-red-400">⚠️ ATTENTION</div>
+                        <div class="text-sm text-red-300">{{ overloaded_count }} resource(s) overloaded</div>
+                        {% elif available_resources > balanced_resources %}
+                        <div class="text-3xl font-bold text-green-400">✓ HEALTHY</div>
+                        <div class="text-sm text-green-300">Good capacity available</div>
+                        {% else %}
+                        <div class="text-3xl font-bold text-blue-400">→ BALANCED</div>
+                        <div class="text-sm text-blue-300">Optimal distribution</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,94 @@
+=================================================================
+🤖 MASTER PROMPT FOR COPILOT CHAT
+=================================================================
+
+Copy and paste this prompt into Copilot Chat (Ctrl+Shift+I) to give AI full context about this project:
+
+---
+
+[Context for Copilot]
+
+I am building the **"Smart PM Control Tower"** (AID_PM).
+
+**Core Architecture:**
+1. **Data Source:** User interacts via Web UI (FastAPI). All data is stored in `pm_system.db` (SQLite).
+2. **Inputs:** Manual Task updates & Resource Selection (Selectable list only, no typing names).
+3. **Outputs:** Generate 2 types of Excel reports based on existing templates:
+   * `Daily_Progress_PH.xls` (Internal Daily Meeting)
+   * `WeeklyReport_PH.xlsx` (Client Report with PB Curve calculation)
+
+4. **Key Logic:** Value-Based Tracking (Weight Score) must be used to calculate `% Progress`. Daily updates must be aggregated into `WeeklySnapshot` for PB Curve plotting.
+5. **Intelligence:** Implement "Smart Matching" (Hidden AI). Suggest the best Resource for a Task based on `Resource.skills` and `Resource.speed_score` vs `Task.task_type`.
+6. **Design:** Professional Slate/Dark BI style using Tailwind CSS. No AI icons.
+
+**Current Status:**
+✅ Foundation Complete (Backend, Database, AI Logic, Excel Export)
+✅ Server Running on http://localhost:8000
+✅ Sample Data Available (4 resources, 1 project, 6 tasks)
+
+**Files Structure:**
+- `main.py` - FastAPI Application (500+ lines)
+- `models.py` - Database Models (4 tables)
+- `database.py` - SQLite Connection
+- `excel_engine.py` - Excel Export Logic
+- `pm_system.db` - Database with sample data
+
+**API Endpoints Available:**
+- Resources CRUD: /resources
+- Projects CRUD: /projects
+- Tasks CRUD: /tasks
+- AI Matching: /tasks/{id}/suggest-resource
+- Excel Export: /export/weekly-report/{id}, /export/daily-progress/{id}
+
+**AI Smart Matching Algorithm:**
+```
+Score = (Skill Match × 5) + (Speed Score × 2.5) + (Quality Score × 2.5)
+Max Score = 100 points (hidden from users)
+```
+
+**Instructions for Copilot:**
+- When I ask about code, refer to files in D:\git\aiD_PM\
+- When I ask to add features, follow the existing architecture
+- When I ask about database, refer to models.py schema
+- When I ask about API, refer to main.py endpoints
+- Always maintain "Hidden Intelligence" - don't show AI scores to users
+- Always use Selectable Lists for Resource assignment (no free text)
+- Always calculate progress using weight_score (Value-Based Tracking)
+
+**Documentation Available:**
+- README.md - Main documentation
+- QUICKSTART.md - Quick start guide
+- COPILOT_CONTEXT.md - Detailed context
+- PROJECT_STRUCTURE.md - Complete structure
+
+---
+
+=================================================================
+🎯 EXAMPLE QUESTIONS TO ASK COPILOT
+=================================================================
+
+After pasting the above context, you can ask:
+
+1. "Show me how to add a new API endpoint for deleting a project"
+2. "How do I modify the AI matching algorithm to consider more factors?"
+3. "Create a function to calculate overall project progress based on task weight scores"
+4. "How do I add a new field to the Resource model?"
+5. "Show me how to customize the Excel export to add more data"
+6. "Create a new endpoint to get project statistics"
+7. "How do I add authentication to the API?"
+8. "Show me how to create a frontend page to display resources"
+9. "How do I add validation to prevent negative progress values?"
+10. "Create a function to automatically create weekly snapshots from task progress"
+
+=================================================================
+🚀 QUICK COMMANDS
+=================================================================
+
+# Open Copilot Chat
+Ctrl+Shift+I (Windows/Linux)
+Cmd+Shift+I (Mac)
+
+# Paste the context above, then ask your questions!
+
+=================================================================
+

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Tasks | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+.sidebar-item-active { border-right: 4px solid #3b82f6; background: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+                        <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+                
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold text-slate-800">Admin & Procurement Tasks</h1>
+                <p class="text-slate-500 text-sm">Critical blockers: PR, PO, Approvals, and Administrative tasks</p>
+            </div>
+
+            <!-- Alert Banner -->
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
+                <div class="flex items-center">
+                    <div class="flex-1">
+                        <p class="text-sm font-bold text-red-800">⚠️ High Priority Tasks</p>
+                        <p class="text-xs text-red-600">These tasks are blocking project progress</p>
+                    </div>
+                    <span class="text-2xl font-bold text-red-600">{{ admin_tasks|length }}</span>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="flex items-center gap-4">
+                    <label class="text-sm font-bold text-slate-700">Filter by Project:</label>
+                    <select id="project_filter" onchange="filterByProject(this.value)" class="text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Projects</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" {% if selected_project_id == project.id %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Admin Tasks Table -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 bg-red-900 text-white flex justify-between items-center">
+                    <h3 class="font-bold">Critical Admin Tasks</h3>
+                    <span class="text-xs opacity-70">Tasks requiring immediate attention</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold">
+                            <tr>
+                                <th class="px-6 py-3">Task Name</th>
+                                <th class="px-6 py-3">Project</th>
+                                <th class="px-6 py-3">Task Type</th>
+                                <th class="px-6 py-3">Assignee</th>
+                                <th class="px-6 py-3">Progress</th>
+                                <th class="px-6 py-3">Priority</th>
+                                <th class="px-6 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for task in admin_tasks %}
+                            <tr class="hover:bg-slate-50 {% if task.actual_progress < 50 %}bg-red-50{% endif %}">
+                                <td class="px-6 py-4 font-medium text-slate-700 text-sm">{{ task.task_name }}</td>
+                                <td class="px-6 py-4 text-xs text-slate-600">Project #{{ task.project_id }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">
+                                        {{ task.task_type }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if task.assigned_resource_id %}
+                                    <span class="inline-flex items-center px-2 py-1 bg-slate-100 rounded text-xs font-semibold">
+                                        Resource #{{ task.assigned_resource_id }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-xs text-red-500 font-bold">⚠️ Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 bg-slate-100 rounded-full h-2 w-24">
+                                            <div class="{% if task.actual_progress < 50 %}bg-red-500{% else %}bg-green-500{% endif %} h-2 rounded-full" 
+                                                 style="width: {{ task.actual_progress }}%"></div>
+                                        </div>
+                                        <span class="text-xs font-bold">{{ task.actual_progress }}%</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if task.actual_progress < 30 %}
+                                    <span class="px-2 py-1 bg-red-600 text-white rounded text-xs font-bold">URGENT</span>
+                                    {% elif task.actual_progress < 70 %}
+                                    <span class="px-2 py-1 bg-yellow-500 text-white rounded text-xs font-bold">HIGH</span>
+                                    {% else %}
+                                    <span class="px-2 py-1 bg-green-500 text-white rounded text-xs font-bold">NORMAL</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <button onclick="quickUpdate({{ task.id }})" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded transition">
+                                        Quick Update
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if not admin_tasks %}
+            <div class="bg-green-50 border border-green-200 rounded-xl p-8 text-center mt-6">
+                <p class="text-green-700 font-bold text-lg">✅ All Clear!</p>
+                <p class="text-green-600 text-sm">No critical admin tasks at the moment</p>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <script>
+    function filterByProject(projectId) {
+        if (projectId) {
+            window.location.href = `/admin-tasks?project_id=${projectId}`;
+        } else {
+            window.location.href = '/admin-tasks';
+        }
+    }
+
+    function quickUpdate(taskId) {
+        const progress = prompt('Enter new progress (0-100):');
+        if (progress !== null && progress >= 0 && progress <= 100) {
+            fetch(`/api/tasks/${taskId}/progress`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `progress=${progress}`
+            }).then(() => {
+                location.reload();
+            });
+        }
+    }
+    </script>
+</body>
+</html>
+

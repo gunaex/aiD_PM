@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Project | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+                        <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/gantt"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+                
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <div class="max-w-3xl mx-auto">
+                <!-- Header -->
+                <div class="mb-8">
+                    <h1 class="text-2xl font-bold text-slate-800">Create New Project</h1>
+                    <p class="text-slate-500 text-sm">Register a new project in the system</p>
+                </div>
+
+                <!-- Breadcrumb -->
+                <div class="flex items-center gap-2 text-sm mb-6">
+                    <a href="/" class="text-blue-600 hover:underline">Dashboard</a>
+                    <span class="text-slate-400">→</span>
+                    <span class="text-slate-600 font-bold">New Project</span>
+                </div>
+
+                <!-- Form Card -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                    <form action="/projects/create" method="POST" class="space-y-6">
+
+                        <!-- Project Name -->
+                        <div>
+                            <label for="name" class="block text-sm font-bold text-slate-700 mb-2">
+                                Project Name <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="name" name="name" placeholder="e.g., Smart PM Control Tower"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required>
+                            <p class="text-xs text-slate-500 mt-1">Enter a clear, descriptive project name</p>
+                        </div>
+
+                        <!-- Customer -->
+                        <div>
+                            <label for="customer" class="block text-sm font-bold text-slate-700 mb-2">
+                                Customer / Client
+                            </label>
+                            <input type="text" id="customer" name="customer" placeholder="e.g., ABC Corporation"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <p class="text-xs text-slate-500 mt-1">Optional - Leave blank for internal projects</p>
+                        </div>
+
+                        <!-- Methodology -->
+                        <div>
+                            <label for="method" class="block text-sm font-bold text-slate-700 mb-2">
+                                Methodology <span class="text-red-500">*</span>
+                            </label>
+                            <select id="method" name="method"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required>
+                                <option value="">-- Select Methodology --</option>
+                                <option value="Scrum" selected>Scrum (Agile)</option>
+                                <option value="Waterfall">Waterfall (Traditional)</option>
+                                <option value="Kanban">Kanban (Flow-based)</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Choose the project management approach</p>
+                        </div>
+
+                        <!-- Budget (Masked) -->
+                        <div>
+                            <label for="budget_masked" class="block text-sm font-bold text-slate-700 mb-2">
+                                Budget Indicator
+                            </label>
+                            <select id="budget_masked" name="budget_masked"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">-- Not Specified --</option>
+                                <option value="฿">฿ (Small)</option>
+                                <option value="฿฿">฿฿ (Medium)</option>
+                                <option value="฿฿฿">฿฿฿ (Large)</option>
+                                <option value="฿฿฿฿">฿฿฿฿ (Enterprise)</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Optional - Relative budget size indicator</p>
+                        </div>
+
+                        <!-- Recovery Mode -->
+                        <div class="border-l-4 border-red-500 bg-red-50 p-4 rounded">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="is_recovery_mode" name="is_recovery_mode" value="true"
+                                    class="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                                <label for="is_recovery_mode" class="flex-1">
+                                    <span class="block text-sm font-bold text-red-800">⚠️ Recovery Mode</span>
+                                    <span class="block text-xs text-red-600">Enable this if the project is in crisis and
+                                        requires special attention</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Phase Planning -->
+                        <div class="pt-6 border-t border-slate-200">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Project Phases Planning</h3>
+                            <p class="text-xs text-slate-500 mb-4">Define standard phases and their planned timeline.
+                                You can adjust these later.</p>
+
+                            <div id="phases-container"
+                                class="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div class="grid grid-cols-12 gap-2 text-xs font-bold text-slate-500 uppercase">
+                                    <div class="col-span-1 text-center">Order</div>
+                                    <div class="col-span-4">Phase Name</div>
+                                    <div class="col-span-3">Planned Start</div>
+                                    <div class="col-span-3">Planned End</div>
+                                    <div class="col-span-1"></div>
+                                </div>
+                                <!-- Rows will be added here by JS -->
+                            </div>
+                            <div class="mt-3">
+                                <button type="button" onclick="addPhaseRow()"
+                                    class="text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                                    + Add Another Phase
+                                </button>
+                            </div>
+                        </div>
+
+                        <script>
+                            const standardPhases = ['UR', 'DR', 'PU/PT', 'IFT', 'SIT', 'BCT', 'IP'];
+
+                            function addPhaseRow(name = '', start = '', end = '') {
+                                const container = document.getElementById('phases-container');
+                                const rows = container.querySelectorAll('.phase-row');
+                                const newIndex = rows.length + 1;
+
+                                const div = document.createElement('div');
+                                div.className = 'grid grid-cols-12 gap-2 items-center phase-row';
+                                div.innerHTML = `
+                                    <div class="col-span-1 text-center font-mono text-slate-400 row-index">${newIndex}</div>
+                                    <div class="col-span-4">
+                                        <input type="text" name="phase_names" value="${name}" placeholder="Phase Name"
+                                            class="w-full text-xs border border-slate-300 rounded px-2 py-1 text-slate-900 font-bold focus:ring-2 focus:ring-blue-500" required>
+                                    </div>
+                                    <div class="col-span-3">
+                                        <input type="date" name="phase_starts" value="${start}"
+                                            class="w-full text-xs border border-slate-300 rounded px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div class="col-span-3">
+                                        <input type="date" name="phase_ends" value="${end}"
+                                            class="w-full text-xs border border-slate-300 rounded px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div class="col-span-1 text-center">
+                                        <button type="button" onclick="removePhaseRow(this)"
+                                            class="text-slate-400 hover:text-red-500 transition">
+                                            ✕
+                                        </button>
+                                    </div>
+                                `;
+                                container.appendChild(div);
+                            }
+
+                            function removePhaseRow(btn) {
+                                const row = btn.closest('.phase-row');
+                                row.remove();
+                                updateRowIndices();
+                            }
+
+                            function updateRowIndices() {
+                                const container = document.getElementById('phases-container');
+                                const rows = container.querySelectorAll('.phase-row');
+                                rows.forEach((row, index) => {
+                                    row.querySelector('.row-index').textContent = index + 1;
+                                });
+                            }
+
+                            // Initialize with standard phases
+                            document.addEventListener('DOMContentLoaded', () => {
+                                standardPhases.forEach(phase => addPhaseRow(phase));
+                            });
+                        </script>
+
+                        <!-- Form Actions -->
+                        <div class="flex items-center justify-between pt-6 border-t border-slate-200">
+                            <a href="/" class="text-sm text-slate-600 hover:text-slate-800 font-medium">
+                                ← Back to Dashboard
+                            </a>
+                            <div class="flex gap-3">
+                                <button type="reset"
+                                    class="px-6 py-3 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition">
+                                    Clear Form
+                                </button>
+                                <button type="submit"
+                                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition">
+                                    Create Project
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Help Box -->
+                <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p class="text-sm font-bold text-blue-800 mb-2">💡 Next Steps After Creating Project:</p>
+                    <ul class="text-xs text-blue-700 space-y-1 ml-4 list-disc">
+                        <li>Add team members from Resource DNA</li>
+                        <li>Define tasks and assign them</li>
+                        <li>Set up weekly snapshots for PB Curve tracking</li>
+                        <li>Export Daily/Weekly reports as needed</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>
