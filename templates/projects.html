@@ -1,21 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projects | aiD_PM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        
-        html, body {
+        html,
+        body {
             height: 100%;
             margin: 0;
             padding: 0;
             overflow: hidden;
         }
-.sidebar-item-active { border-right: 4px solid #3b82f6; background: #1e293b; }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
     </style>
 </head>
+
 <body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
     <div class="flex h-full">
         <!-- Sidebar -->
@@ -23,7 +29,7 @@
             <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
                 aiD_PM <span class="text-blue-500">System</span>
             </div>
-                        <nav class="flex-1 mt-4 overflow-y-auto">
+            <nav class="flex-1 mt-4 overflow-y-auto">
                 <a href="/"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
                 <a href="/projects/list"
@@ -34,13 +40,15 @@
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
                 <a href="/calendar-grid"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
-                
+
                 <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
                 <a href="/management-control"
-                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a><a href="/phases"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
                 <a href="/issues"
-                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
+            </nav>
             <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
                 v1.5 AI Powered
             </div>
@@ -53,7 +61,8 @@
                     <h1 class="text-2xl font-bold text-slate-800">All Projects</h1>
                     <p class="text-slate-500 text-sm">Manage and monitor all projects in the system</p>
                 </div>
-                <button onclick="window.location.href='/projects/create'" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition">
+                <button onclick="window.location.href='/projects/create'"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition">
                     + New Project
                 </button>
             </div>
@@ -86,9 +95,11 @@
             {% if projects %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {% for project in projects %}
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden">
+                <div
+                    class="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden">
                     <!-- Header -->
-                    <div class="p-6 border-b border-slate-100 {% if project.is_recovery_mode %}bg-red-50{% else %}bg-slate-50{% endif %}">
+                    <div
+                        class="p-6 border-b border-slate-100 {% if project.is_recovery_mode %}bg-red-50{% else %}bg-slate-50{% endif %}">
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
                                 <h3 class="font-bold text-lg text-slate-800 mb-1">{{ project.name }}</h3>
@@ -127,7 +138,7 @@
                         <!-- Created Date -->
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-slate-600">Created:</span>
-                            <span class="text-xs text-slate-500">{{ project.created_at.strftime('%Y-%m-%d') }}</span>
+                            <span class="text-xs text-slate-500">{{ project.created_at.strftime('%Y/%m/%d') }}</span>
                         </div>
 
                         <!-- Progress (Placeholder) -->
@@ -144,10 +155,12 @@
 
                     <!-- Actions -->
                     <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-2">
-                        <a href="/projects/{{ project.id }}/details" class="flex-1 text-center text-sm bg-white hover:bg-slate-100 text-slate-700 font-medium py-2 px-3 rounded border border-slate-300 transition">
+                        <a href="/projects/{{ project.id }}/details"
+                            class="flex-1 text-center text-sm bg-white hover:bg-slate-100 text-slate-700 font-medium py-2 px-3 rounded border border-slate-300 transition">
                             View Details
                         </a>
-                        <a href="/export/weekly/{{ project.id }}" class="flex-1 text-center text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded transition">
+                        <a href="/export/weekly/{{ project.id }}"
+                            class="flex-1 text-center text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded transition">
                             Export Weekly
                         </a>
                     </div>
@@ -161,7 +174,8 @@
                     <div class="text-6xl mb-4">📋</div>
                     <h3 class="text-xl font-bold text-slate-800 mb-2">No Projects Yet</h3>
                     <p class="text-slate-600 mb-6">Get started by creating your first project</p>
-                    <button onclick="window.location.href='/projects/create'" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition">
+                    <button onclick="window.location.href='/projects/create'"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium shadow-sm transition">
                         + Create First Project
                     </button>
                 </div>
@@ -170,5 +184,5 @@
         </main>
     </div>
 </body>
-</html>
 
+</html>

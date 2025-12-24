@@ -104,43 +104,54 @@
                                 <option value="Procurement" {% if task.task_type=='Procurement' %}selected{% endif %}>
                                     Procurement (PR/PO)</option>
                                 <option value="Fix" {% if task.task_type=='Fix' %}selected{% endif %}>Bug Fix</option>
-                                <option value="Testing" {% if task.task_type=='Testing' %}selected{% endif %}>Testing/QA
-                                </option>
-                                <option value="Design" {% if task.task_type=='Design' %}selected{% endif %}>Design/UX
-                                </option>
-                                <option value="custom">+ Add Custom Type...</option>
-                            </select>
-                            <input type="text" id="custom_task_type" placeholder="Enter custom task type"
-                                class="hidden w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
 
-                        <!-- AI Recommendation Box -->
-                        <div id="recommendation" class="hidden bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                            <p class="text-sm font-bold text-blue-800 mb-1">💡 System Suggestion</p>
-                            <p id="recommendation-text" class="text-sm text-blue-700"></p>
-                        </div>
-
-                        <!-- Assigned Resources (Multi-select) -->
+                        <!-- Assigned Resources (Searchable Multi-select) -->
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">
-                                Assign Team Members (Multiple) ⭐
+                                Assign Team Members (Searchable & Multiple) ⭐
                             </label>
-                            <div
-                                class="text-slate-900 border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto bg-white">
-                                {% for resource in resources %}
-                                <label class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
-                                    <input type="checkbox" name="resource_ids" value="{{ resource.id }}" {% if
-                                        task.assigned_resource_id==resource.id %}checked{% endif %}
-                                        class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
-                                    <div class="flex-1">
-                                        <div class="font-medium text-sm text-slate-800">{{ resource.full_name }}</div>
-                                        <div class="text-xs text-slate-500">{{ resource.nickname }} • {{
-                                            resource.position }}</div>
-                                    </div>
-                                </label>
-                                {% endfor %}
+                            
+                            <!-- Search Input -->
+                            <div class="relative mb-2">
+                                <input type="text" id="resourceSearch" 
+                                    placeholder="Search by name, position, skills..."
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <div class="absolute right-3 top-3 text-slate-400">
+                                    🔍
+                                </div>
                             </div>
-                            <p class="text-xs text-slate-500 mt-1">✅ Select multiple team members</p>
+                            
+                            <!-- Selected Resources Display -->
+                            <div id="selectedResources" class="mb-3 flex flex-wrap gap-2"></div>
+                            
+                            <!-- Search Results -->
+                            <div id="resourceResults" 
+                                class="border border-slate-300 rounded-lg bg-white max-h-64 overflow-y-auto hidden">
+                                <!-- Results will be populated here -->
+                            </div>
+                            
+                            <!-- Hidden inputs for form submission -->
+                            <div id="resourceInputs"></div>
+                            
+                            <p class="text-xs text-slate-500 mt-1">✅ Search and select multiple team members</p>
+                        </div>
+
+                        <!-- Phase Assignment (Optional) -->
+                        <div>
+                            <label for="phase_id" class="block text-sm font-bold text-slate-700 mb-2">
+                                Assign to Phase (Optional)
+                            </label>
+                            <select id="phase_id" name="phase_id"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">-- No Phase --</option>
+                                {% for phase in phases %}
+                                <option value="{{ phase.id }}" {% if task.phase_id == phase.id %}selected{% endif %}>
+                                    {{ phase.phase_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Link this task to a specific project phase</p>
                         </div>
 
                         <!-- Weight Score -->
@@ -214,6 +225,180 @@
     </div>
 
     <script>
+        // Resource search and selection functionality
+        let selectedResources = [];
+        let allResources = [];
+        
+        // Pre-populate with assigned resources
+        const assignedResourceIds = {{ assigned_resource_ids | tojson }};
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load all resources first
+            await loadAllResources();
+            
+            // Pre-select assigned resources
+            for (const resourceId of assignedResourceIds) {
+                const resource = allResources.find(r => r.id === resourceId);
+                if (resource) {
+                    addSelectedResource(resource);
+                }
+            }
+            
+            updateResourceInputs();
+            
+            // Setup search functionality
+            setupResourceSearch();
+        });
+        
+        async function loadAllResources() {
+            try {
+                const response = await fetch('/api/find-resources');
+                allResources = await response.json();
+            } catch (error) {
+                console.error('Error loading resources:', error);
+            }
+        }
+        
+        function setupResourceSearch() {
+            const searchInput = document.getElementById('resourceSearch');
+            const resultsDiv = document.getElementById('resourceResults');
+            
+            let searchTimeout;
+            
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+                
+                if (query.length === 0) {
+                    resultsDiv.classList.add('hidden');
+                    return;
+                }
+                
+                searchTimeout = setTimeout(() => {
+                    searchResources(query);
+                }, 300);
+            });
+            
+            searchInput.addEventListener('focus', function() {
+                if (this.value.trim()) {
+                    searchResources(this.value.trim());
+                }
+            });
+            
+            // Hide results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('#resourceSearch') && !e.target.closest('#resourceResults')) {
+                    resultsDiv.classList.add('hidden');
+                }
+            });
+        }
+        
+        async function searchResources(query) {
+            try {
+                const response = await fetch(`/api/find-resources?q=${encodeURIComponent(query)}`);
+                const results = await response.json();
+                displayResourceResults(results);
+            } catch (error) {
+                console.error('Error searching resources:', error);
+            }
+        }
+        
+        function displayResourceResults(results) {
+            const resultsDiv = document.getElementById('resourceResults');
+            
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<div class="p-3 text-slate-500 text-sm">No resources found</div>';
+            } else {
+                resultsDiv.innerHTML = results.map(resource => {
+                    const isSelected = selectedResources.some(r => r.id === resource.id);
+                    return `
+                        <div class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 ${isSelected ? 'bg-blue-50' : ''}" 
+                             onclick="toggleResource(${resource.id})">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-medium text-sm text-slate-800">${resource.full_name}</div>
+                                    <div class="text-xs text-slate-500">${resource.nickname} • ${resource.position} @ ${resource.company}</div>
+                                    <div class="text-xs text-slate-400">Skills: ${resource.skills}</div>
+                                </div>
+                                <div class="text-sm ${isSelected ? 'text-blue-600 font-bold' : 'text-slate-400'}">
+                                    ${isSelected ? '✓ Selected' : 'Click to select'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            resultsDiv.classList.remove('hidden');
+        }
+        
+        function toggleResource(resourceId) {
+            const resource = allResources.find(r => r.id === resourceId);
+            if (!resource) return;
+            
+            const existingIndex = selectedResources.findIndex(r => r.id === resourceId);
+            
+            if (existingIndex >= 0) {
+                // Remove resource
+                selectedResources.splice(existingIndex, 1);
+            } else {
+                // Add resource
+                addSelectedResource(resource);
+            }
+            
+            updateSelectedResourcesDisplay();
+            updateResourceInputs();
+            
+            // Refresh search results to update selection status
+            const searchInput = document.getElementById('resourceSearch');
+            if (searchInput.value.trim()) {
+                searchResources(searchInput.value.trim());
+            }
+        }
+        
+        function addSelectedResource(resource) {
+            if (!selectedResources.some(r => r.id === resource.id)) {
+                selectedResources.push(resource);
+            }
+        }
+        
+        function removeSelectedResource(resourceId) {
+            selectedResources = selectedResources.filter(r => r.id !== resourceId);
+            updateSelectedResourcesDisplay();
+            updateResourceInputs();
+            
+            // Refresh search results if visible
+            const searchInput = document.getElementById('resourceSearch');
+            if (searchInput.value.trim()) {
+                searchResources(searchInput.value.trim());
+            }
+        }
+        
+        function updateSelectedResourcesDisplay() {
+            const selectedDiv = document.getElementById('selectedResources');
+            
+            if (selectedResources.length === 0) {
+                selectedDiv.innerHTML = '<div class="text-sm text-slate-500 p-2">No resources selected</div>';
+                return;
+            }
+            
+            selectedDiv.innerHTML = selectedResources.map(resource => `
+                <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                    <span>${resource.full_name} (${resource.nickname})</span>
+                    <button type="button" onclick="removeSelectedResource(${resource.id})" 
+                            class="text-blue-600 hover:text-blue-800 font-bold">
+                        ×
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function updateResourceInputs() {
+            const inputsDiv = document.getElementById('resourceInputs');
+            inputsDiv.innerHTML = selectedResources.map(resource => 
+                `<input type="hidden" name="resource_ids" value="${resource.id}">`
+            ).join('');
+        }
         function updateProgressLabel(value) {
             document.getElementById('progress-label').textContent = value + '%';
         }

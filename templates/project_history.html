@@ -29,7 +29,7 @@
             <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
                 aiD_PM <span class="text-blue-500">System</span>
             </div>
-                        <nav class="flex-1 mt-4 overflow-y-auto">
+            <nav class="flex-1 mt-4 overflow-y-auto">
                 <a href="/"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
                 <a href="/projects/list"
@@ -40,13 +40,15 @@
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
                 <a href="/calendar-grid"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
-                
+
                 <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
                 <a href="/management-control"
-                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control Center</a><a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a><a href="/phases"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
                 <a href="/issues"
-                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a></nav>
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
+            </nav>
             <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
                 v1.5 AI Powered
             </div>
@@ -90,7 +92,7 @@
                         <div>
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="text-xs font-bold text-slate-500 uppercase">{{
-                                    log.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                    log.created_at.strftime('%Y/%m/%d %H:%M') }}</span>
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
                                     {% if log.action_type == 'project_created' %}bg-green-100 text-green-700
                                     {% elif log.action_type == 'status_changed' %}bg-blue-100 text-blue-700

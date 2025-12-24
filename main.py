@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 import datetime
@@ -234,6 +235,68 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         "current_date": datetime.date.today().strftime("%d %b %Y")
     })
 
+@app.get("/api/resources/{resource_id}")
+def get_resource_detail(resource_id: int, db: Session = Depends(get_db)):
+    """Get detailed resource information for editing"""
+    resource = db.query(models.Resource).filter(models.Resource.id == resource_id).first()
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    return {
+        "id": resource.id,
+        "full_name": resource.full_name,
+        "nickname": resource.nickname or "",
+        "position": resource.position or "",
+        "company": resource.company or "",
+        "skills": resource.skills or "",
+        "is_active": resource.is_active
+    }
+
+@app.put("/api/resources/{resource_id}")
+def update_resource(
+    resource_id: int,
+    full_name: str = Form(...),
+    nickname: str = Form(...),
+    position: str = Form(...),
+    company: Optional[str] = Form(None),
+    skills: Optional[str] = Form(None),
+    is_active: bool = Form(True),
+    db: Session = Depends(get_db)
+):
+    """Update resource information"""
+    resource = db.query(models.Resource).filter(models.Resource.id == resource_id).first()
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    resource.full_name = full_name
+    resource.nickname = nickname
+    resource.position = position
+    resource.company = company
+    resource.skills = skills
+    resource.is_active = is_active
+    
+    db.commit()
+    db.refresh(resource)
+    
+    return {"success": True, "message": "Resource updated successfully"}
+
+@app.patch("/api/resources/{resource_id}/toggle-status")
+def toggle_resource_status(resource_id: int, db: Session = Depends(get_db)):
+    """Toggle resource active/inactive status"""
+    resource = db.query(models.Resource).filter(models.Resource.id == resource_id).first()
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    resource.is_active = not resource.is_active
+    db.commit()
+    db.refresh(resource)
+    
+    return {
+        "success": True,
+        "message": f"Resource {'activated' if resource.is_active else 'deactivated'} successfully",
+        "is_active": resource.is_active
+    }
+
 @app.get("/resources", response_class=HTMLResponse)
 async def resources_page(request: Request, db: Session = Depends(get_db)):
     """หน้าจัดการ Resource DNA"""
@@ -300,6 +363,7 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
 async def kanban_page(request: Request, project_id: Optional[int] = None, db: Session = Depends(get_db)):
     """หน้า Kanban Board"""
     projects = db.query(models.Project).all()
+    all_resources = db.query(models.Resource).all()  # Add resources for task display
     
     # Filter tasks by project if specified
     if project_id:
@@ -311,6 +375,7 @@ async def kanban_page(request: Request, project_id: Optional[int] = None, db: Se
         "request": request,
         "projects": projects,
         "tasks": tasks,
+        "all_resources": all_resources,  # Add resources to template context
         "selected_project_id": project_id
     })
 
@@ -1023,11 +1088,13 @@ async def create_task_page(request: Request, project_id: int, db: Session = Depe
         raise HTTPException(status_code=404, detail="Project not found")
     
     resources = db.query(models.Resource).filter(models.Resource.is_active == True).all()
+    phases = db.query(models.ProjectPhase).filter(models.ProjectPhase.project_id == project_id).all()
     
     return templates.TemplateResponse("create_task.html", {
         "request": request,
         "project": project,
-        "resources": resources
+        "resources": resources,
+        "phases": phases
     })
 
 @app.get("/tasks/{task_id}/edit", response_class=HTMLResponse)
@@ -1038,11 +1105,28 @@ async def edit_task_page(task_id: int, request: Request, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Task not found")
     
     resources = db.query(models.Resource).filter(models.Resource.is_active == True).all()
+    phases = db.query(models.ProjectPhase).filter(models.ProjectPhase.project_id == task.project_id).all()
+    
+    # Get currently assigned resources (both primary and multi-assigned)
+    assigned_resource_ids = set()
+    
+    # Primary assigned resource
+    if task.assigned_resource_id:
+        assigned_resource_ids.add(task.assigned_resource_id)
+    
+    # Multi-assigned resources
+    task_resources = db.query(models.TaskResource).filter(
+        models.TaskResource.task_id == task_id
+    ).all()
+    for tr in task_resources:
+        assigned_resource_ids.add(tr.resource_id)
     
     return templates.TemplateResponse("edit_task.html", {
         "request": request,
         "task": task,
-        "resources": resources
+        "resources": resources,
+        "phases": phases,
+        "assigned_resource_ids": list(assigned_resource_ids)
     })
 
 # ==================== Form Handlers ====================
@@ -1154,18 +1238,28 @@ async def create_task_form(
     task_type: str = Form(...),
     weight_score: float = Form(...),
     resource_ids: List[int] = Form([]),  # Multi-select support
+    phase_id: Optional[str] = Form(None),  # Accept as string first to validate
     planned_start: Optional[str] = Form(None),
     planned_end: Optional[str] = Form(None),
     next_url: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    """สร้าง Task ใหม่จากฟอร์ม พร้อม Multi-Assign"""
+    """สร้าง Task ใหม่จากฟอร์ม พร้อม Multi-Assign และ Phase"""
+    # Handle phase_id validation (convert empty string to None)
+    validated_phase_id = None
+    if phase_id and phase_id.strip():
+        try:
+            validated_phase_id = int(phase_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid phase ID")
+    
     task = models.Task(
         project_id=project_id,
         task_name=task_name,
         task_type=task_type,
         weight_score=weight_score,
-        assigned_resource_id=resource_ids[0] if resource_ids else None,  # Primary assignee (backward compatibility)
+        assigned_resource_id=resource_ids[0] if resource_ids and len(resource_ids) > 0 else None,  # Safe access
+        phase_id=validated_phase_id,  # Use validated phase ID
         planned_start=datetime.datetime.strptime(planned_start, '%Y-%m-%d').date() if planned_start else None,
         planned_end=datetime.datetime.strptime(planned_end, '%Y-%m-%d').date() if planned_end else None,
         actual_progress=0.0
@@ -1175,13 +1269,14 @@ async def create_task_form(
     db.refresh(task)
     
     # Add multi-assign relationships
-    for resource_id in resource_ids:
-        task_resource = models.TaskResource(
-            task_id=task.id,
-            resource_id=resource_id
-        )
-        db.add(task_resource)
-    db.commit()
+    if resource_ids:  # Only if resources are selected
+        for resource_id in resource_ids:
+            task_resource = models.TaskResource(
+                task_id=task.id,
+                resource_id=resource_id
+            )
+            db.add(task_resource)
+        db.commit()
     
     redirect_target = next_url if next_url else f"/projects/{project_id}/details"
     return RedirectResponse(url=redirect_target, status_code=303)
@@ -1194,21 +1289,31 @@ async def edit_task_form(
     weight_score: float = Form(...),
     actual_progress: float = Form(...),
     resource_ids: List[int] = Form([]),  # Multi-select support
+    phase_id: Optional[str] = Form(None),  # Accept as string first to validate
     planned_start: Optional[str] = Form(None),
     planned_end: Optional[str] = Form(None),
     next_url: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    """อัพเดท Task จากฟอร์ม พร้อม Multi-Assign"""
+    """อัพเดท Task จากฟอร์ม พร้อม Multi-Assign และ Phase"""
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Handle phase_id validation (convert empty string to None)
+    validated_phase_id = None
+    if phase_id and phase_id.strip():
+        try:
+            validated_phase_id = int(phase_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid phase ID")
     
     task.task_name = task_name
     task.task_type = task_type
     task.weight_score = weight_score
     task.actual_progress = actual_progress
     task.assigned_resource_id = resource_ids[0] if resource_ids else None  # Primary
+    task.phase_id = validated_phase_id  # Use validated phase ID
     task.planned_start = datetime.datetime.strptime(planned_start, '%Y-%m-%d').date() if planned_start else None
     task.planned_end = datetime.datetime.strptime(planned_end, '%Y-%m-%d').date() if planned_end else None
     
@@ -1237,7 +1342,129 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.commit()
     return RedirectResponse(url=f"/projects/{project_id}/details", status_code=303)
 
+# ==================== CSV Import/Export Endpoints ====================
+
+import csv_handler
+from fastapi.responses import Response
+
+@app.get("/projects/{project_id}/tasks/export")
+@app.get("/projects/{project_id}/export-csv")  # Backward compatibility alias
+async def export_tasks_csv(project_id: int, db: Session = Depends(get_db)):
+    """Export all tasks for a project as CSV file"""
+    # Check if project exists
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Get tasks count
+    tasks_count = db.query(models.Task).filter(models.Task.project_id == project_id).count()
+    
+    # Generate CSV
+    if tasks_count > 0:
+        csv_content = csv_handler.export_tasks_to_csv(project_id, db)
+    else:
+        # Return blank template if no tasks
+        csv_content = csv_handler.generate_blank_template()
+    
+    # Return as downloadable file
+    filename = f"tasks_project_{project_id}_{datetime.datetime.now().strftime('%Y%m%d')}.csv"
+    
+    # Encode as UTF-8 with BOM for proper Unicode support
+    csv_bytes = '\ufeff'.encode('utf-8') + csv_content.encode('utf-8')
+    
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@app.post("/projects/{project_id}/tasks/import")
+async def import_tasks_csv(
+    project_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Import tasks from CSV file with strict validation"""
+    # Check if project exists
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Read CSV content with better encoding handling
+    try:
+        csv_content = await file.read()
+        # Try UTF-8 first, then fall back to other encodings
+        try:
+            csv_text = csv_content.decode('utf-8')
+        except UnicodeDecodeError:
+            # Try UTF-8 with BOM
+            try:
+                csv_text = csv_content.decode('utf-8-sig')
+            except UnicodeDecodeError:
+                # Fall back to Windows encoding
+                try:
+                    csv_text = csv_content.decode('cp1252')
+                except UnicodeDecodeError:
+                    # Last resort: ISO-8859-1
+                    csv_text = csv_content.decode('iso-8859-1')
+    except Exception as e:
+        return {
+            "status": "error",
+            "success": False,
+            "created_count": 0,
+            "updated_count": 0,
+            "errors": [f"File read error: {str(e)}"],
+            "message": f"File read error: {str(e)}"
+        }
+    
+    # Import tasks
+    result = csv_handler.import_tasks_from_csv(project_id, csv_text, db)
+    
+    return result
+
 # ==================== API Endpoints ====================
+
+@app.get("/api/test")
+def test_endpoint():
+    """Simple test endpoint"""
+    return {"status": "ok", "message": "Test endpoint working"}
+
+@app.get("/api/find-resources")
+def find_resources(q: str = "", db: Session = Depends(get_db)):
+    """Find resources by full name, skills, and position only"""
+    try:
+        # Get all active resources
+        resources = db.query(models.Resource).filter(models.Resource.is_active == True).all()
+        
+        results = []
+        for r in resources:
+            # Simple search - only check full_name, skills, and position
+            if q:
+                search_term = q.lower()
+                full_name = r.full_name.lower() if r.full_name else ""
+                skills = r.skills.lower() if r.skills else ""
+                position = r.position.lower() if r.position else ""
+                
+                # Skip if no match
+                if not (search_term in full_name or search_term in skills or search_term in position):
+                    continue
+            
+            # Build result
+            results.append({
+                "id": r.id,
+                "full_name": r.full_name,
+                "nickname": r.nickname or "",
+                "position": r.position or "",
+                "company": r.company or "",
+                "skills": r.skills or "",
+                "is_active": r.is_active,
+                "display_text": f"{r.full_name} ({r.nickname or 'No nickname'}) - {r.position or 'No position'}"
+            })
+        
+        return results[:20]
+        
+    except Exception:
+        return []
 
 @app.get("/api/resources", response_model=List[ResourceResponse])
 def api_get_resources(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

@@ -56,12 +56,12 @@ def format_date_for_export(date_obj) -> str:
 def export_tasks_to_csv(project_id: int, db: Session) -> str:
     """
     Export all tasks for a project to CSV format
-    Returns CSV string content
+    Returns CSV string content with proper Unicode support
     """
     tasks = db.query(models.Task).filter(models.Task.project_id == project_id).all()
     
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
     
     # Write header
     writer.writerow([
@@ -108,9 +108,9 @@ def export_tasks_to_csv(project_id: int, db: Session) -> str:
 
 
 def generate_blank_template() -> str:
-    """Generate blank CSV template with headers only"""
+    """Generate blank CSV template with headers only and proper Unicode support"""
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
     writer.writerow([
         "Task ID", "Task Name", "Task Type", "Weight Score", "Phase",
         "Assigned Resources", "Planned Start", "Planned End", "Progress"
@@ -120,12 +120,16 @@ def generate_blank_template() -> str:
 
 def validate_csv_file(csv_content: str, project_id: int, db: Session) -> Tuple[bool, List[str]]:
     """
-    Validate entire CSV file before import
+    Validate entire CSV file before import with Unicode support
     Returns: (is_valid, error_messages)
     """
     errors = []
     
     try:
+        # Handle potential BOM and ensure proper Unicode handling
+        if csv_content.startswith('\ufeff'):
+            csv_content = csv_content[1:]
+        
         reader = csv.DictReader(io.StringIO(csv_content))
         
         # Check required columns
@@ -179,18 +183,29 @@ def validate_csv_file(csv_content: str, project_id: int, db: Session) -> Tuple[b
 
 def import_tasks_from_csv(project_id: int, csv_content: str, db: Session) -> Dict:
     """
-    Import tasks from CSV file
+    Import tasks from CSV file with Unicode support
     Returns: {"success": bool, "created": int, "updated": int, "errors": []}
     """
     # Validate first
     is_valid, errors = validate_csv_file(csv_content, project_id, db)
     if not is_valid:
-        return {"success": False, "created": 0, "updated": 0, "errors": errors}
+        return {
+            "status": "error",
+            "success": False,
+            "created_count": 0,
+            "updated_count": 0,
+            "errors": errors,
+            "message": "Validation failed"
+        }
     
     created_count = 0
     updated_count = 0
     
     try:
+        # Handle potential BOM and ensure proper Unicode handling
+        if csv_content.startswith('\ufeff'):
+            csv_content = csv_content[1:]
+            
         reader = csv.DictReader(io.StringIO(csv_content))
         
         for row in reader:
@@ -280,17 +295,21 @@ def import_tasks_from_csv(project_id: int, csv_content: str, db: Session) -> Dic
         
         db.commit()
         return {
+            "status": "success",
             "success": True,
-            "created": created_count,
-            "updated": updated_count,
-            "errors": []
+            "created_count": created_count,
+            "updated_count": updated_count,
+            "errors": [],
+            "message": f"Successfully imported {created_count + updated_count} tasks"
         }
     
     except Exception as e:
         db.rollback()
         return {
+            "status": "error",
             "success": False,
-            "created": 0,
-            "updated": 0,
-            "errors": [f"Import failed: {str(e)}"]
+            "created_count": 0,
+            "updated_count": 0,
+            "errors": [f"Import failed: {str(e)}"],
+            "message": str(e)
         }
