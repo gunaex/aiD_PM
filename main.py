@@ -8,6 +8,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 import datetime
 import os
+import re
 
 import models
 from database import engine, get_db, init_db
@@ -16,6 +17,42 @@ from ai_assistant import ai_assistant
 
 # สร้างตารางในฐานข้อมูล
 init_db()
+
+def generate_task_id(customer: str, project_name: str, db: Session) -> str:
+    """Generate unique Task ID: 3 chars from customer + 3 chars from project + 3-digit running number"""
+    # Extract 3 characters from customer (remove spaces and special chars)
+    customer_clean = re.sub(r'[^A-Za-z0-9]', '', customer or 'GEN')[:3].upper().ljust(3, 'X')
+    
+    # Extract 3 characters from project name (remove spaces and special chars)  
+    project_clean = re.sub(r'[^A-Za-z0-9]', '', project_name or 'PRJ')[:3].upper().ljust(3, 'X')
+    
+    # Create base prefix
+    base_prefix = f"{customer_clean}{project_clean}"
+    
+    # Find all existing Task IDs with this prefix
+    existing_tasks = db.query(models.Task).filter(
+        models.Task.task_id.like(f"{base_prefix}%")
+    ).all()
+    
+    # Get existing numbers for this prefix
+    used_numbers = []
+    for existing_task in existing_tasks:
+        if (existing_task.task_id and 
+            len(existing_task.task_id) >= 6 and 
+            existing_task.task_id.startswith(base_prefix)):
+            try:
+                num = int(existing_task.task_id[-3:])
+                used_numbers.append(num)
+            except ValueError:
+                continue
+    
+    # Find the next available number
+    next_number = 1
+    while next_number in used_numbers:
+        next_number += 1
+    
+    # Format with leading zeros
+    return f"{base_prefix}{next_number:03d}"
 
 app = FastAPI(title="Smart PM Control Tower (aiD_PM)", version="1.5.0 - AI Powered")
 
@@ -1253,7 +1290,16 @@ async def create_task_form(
         except ValueError:
             raise HTTPException(status_code=422, detail="Invalid phase ID")
     
+    # Get project info for Task ID generation
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Generate unique Task ID
+    task_id = generate_task_id(project.customer, project.name, db)
+    
     task = models.Task(
+        task_id=task_id,  # NEW: Add unique Task ID
         project_id=project_id,
         task_name=task_name,
         task_type=task_type,

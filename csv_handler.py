@@ -93,7 +93,7 @@ def export_tasks_to_csv(project_id: int, db: Session) -> str:
                 resource_names.append(resource.full_name)
         
         writer.writerow([
-            task.id,
+            task.task_id or f"TMP{task.id:03d}",  # Use new task_id or generate temporary ID
             task.task_name,
             task.task_type,
             task.weight_score,
@@ -230,35 +230,44 @@ def import_tasks_from_csv(project_id: int, csv_content: str, db: Session) -> Dic
                     phase_id = phase.id
             
             # Update or Create
-            if task_id and task_id.isdigit():
+            task_to_update = None
+            if task_id:
+                # Try to find by task_id first (new format)
+                task_to_update = db.query(models.Task).filter(
+                    models.Task.task_id == task_id,
+                    models.Task.project_id == project_id
+                ).first()
+                
+                # If not found and it's numeric, try old ID lookup
+                if not task_to_update and task_id.isdigit():
+                    task_to_update = db.query(models.Task).filter(
+                        models.Task.id == int(task_id),
+                        models.Task.project_id == project_id
+                    ).first()
+            
+            if task_to_update:
                 # Update existing task
-                task = db.query(models.Task).filter(models.Task.id == int(task_id)).first()
-                if task:
-                    task.task_name = task_name
-                    task.task_type = task_type
-                    task.weight_score = weight_score
-                    task.phase_id = phase_id
-                    task.planned_start = planned_start
-                    task.planned_end = planned_end
-                    task.actual_progress = progress
-                    updated_count += 1
-                else:
-                    # ID doesn't exist, create new
-                    task = models.Task(
-                        project_id=project_id,
-                        task_name=task_name,
-                        task_type=task_type,
-                        weight_score=weight_score,
-                        phase_id=phase_id,
-                        planned_start=planned_start,
-                        planned_end=planned_end,
-                        actual_progress=progress
-                    )
-                    db.add(task)
-                    created_count += 1
+                task_to_update.task_name = task_name
+                task_to_update.task_type = task_type
+                task_to_update.weight_score = weight_score
+                task_to_update.phase_id = phase_id
+                task_to_update.planned_start = planned_start
+                task_to_update.planned_end = planned_end
+                task_to_update.actual_progress = progress
+                updated_count += 1
+                task = task_to_update
             else:
-                # Create new task
+                # Create new task with auto-generated task_id
+                # Import generate_task_id function
+                import main
+                new_task_id = main.generate_task_id(
+                    db.query(models.Project).filter(models.Project.id == project_id).first().customer,
+                    db.query(models.Project).filter(models.Project.id == project_id).first().name,
+                    db
+                )
+                
                 task = models.Task(
+                    task_id=new_task_id,
                     project_id=project_id,
                     task_name=task_name,
                     task_type=task_type,

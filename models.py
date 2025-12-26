@@ -36,6 +36,7 @@ class Resource(Base):
 class Task(Base):
     __tablename__ = "tasks"
     id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(String, unique=True, nullable=False, index=True)  # NEW: Unique Task ID
     project_id = Column(Integer, ForeignKey("projects.id"))
     task_name = Column(String, nullable=False)
     task_type = Column(String, nullable=False)  # Dev, Admin, Procurement, Fix
