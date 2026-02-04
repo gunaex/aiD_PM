@@ -16,6 +16,7 @@ import time
 import models
 from database import engine, get_db, init_db
 import excel_engine
+import report_engine
 from ai_assistant import ai_assistant
 
 def auto_backup_worker():
@@ -2289,6 +2290,114 @@ def export_daily_progress_endpoint(project_id: int, db: Session = Depends(get_db
         return FileResponse(result_path, filename=os.path.basename(result_path))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
+
+# ==================== PDF Report Export ====================
+
+@app.get("/report/pdf/{project_id}")
+async def export_project_pdf_endpoint(project_id: int, db: Session = Depends(get_db)):
+    """Generate and export a 1-page Project Performance PDF Report"""
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Aggregating data for the report
+    tasks = db.query(models.Task).filter(models.Task.project_id == project_id).all()
+    issues = db.query(models.Issue).filter(models.Issue.project_id == project_id).all()
+    
+    # 1. Total & Completed Tasks
+    tasks_total = len(tasks)
+    tasks_completed = len([t for t in tasks if t.actual_progress == 100])
+    
+    # 2. Weighted Progress
+    total_weight = sum(t.weight_score for t in tasks)
+    weighted_progress = sum((t.actual_progress / 100) * t.weight_score for t in tasks)
+    overall_progress = (weighted_progress / total_weight * 100) if total_weight > 0 else 0
+    
+    # 3. Remaining Hours
+    remaining_hours = sum(max(0, t.estimated_hours - t.actual_hours) for t in tasks)
+    
+    # 4. Issue Statistics
+    issues_open = len([i for i in issues if i.status.lower() != "closed"])
+    issues_critical = len([i for i in issues if i.severity.lower() in ["critical", "high"] and i.status.lower() != "closed"])
+    
+    # Issues resolved in the last 7 days
+    seven_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    issues_resolved_week = len([i for i in issues if i.status.lower() == "closed" and i.closed_at and i.closed_at >= seven_days_ago])
+    
+    # 5. Upcoming Milestones (Next 3 tasks/phases with deadlines)
+    now_date = datetime.date.today()
+    milestones_data = []
+    
+    # Get upcoming tasks with deadlines
+    upcoming_tasks = [t for t in tasks if t.planned_end and t.planned_end >= now_date and t.actual_progress < 100]
+    upcoming_tasks.sort(key=lambda x: x.planned_end)
+    for t in upcoming_tasks[:5]:
+        status = "Delayed" if t.planned_end < now_date else ("In Progress" if t.actual_progress > 0 else "Pending")
+        milestones_data.append({
+            "name": t.task_name,
+            "due_date": t.planned_end.strftime("%Y-%m-%d"),
+            "status": status
+        })
+
+    # 6. Resource Overview
+    # Find all resources assigned to this project's tasks
+    resource_ids = set()
+    for t in tasks:
+        if t.assigned_resource_id:
+            resource_ids.add(t.assigned_resource_id)
+        # Also check multi-assign
+        for tr in t.task_resources:
+            resource_ids.add(tr.resource_id)
+            
+    project_resources = []
+    for r_id in resource_ids:
+        res = db.query(models.Resource).filter(models.Resource.id == r_id).first()
+        if res:
+            # Count active tasks for this project
+            active_tasks = [t for t in tasks if (t.assigned_resource_id == r_id or any(tr.resource_id == r_id for tr in t.task_resources)) and t.actual_progress < 100]
+            project_resources.append({
+                "name": res.nickname or res.full_name,
+                "role": res.position or "Team Member",
+                "task_count": len(active_tasks)
+            })
+
+    # 7. AI Summary (Mocking or calling ai_assistant if it has a summary method)
+    ai_summary = f"Project is at {overall_progress:.1f}% completion. "
+    if issues_critical > 0:
+        ai_summary += f"Urgent attention required for {issues_critical} critical issues. "
+    if any(t.planned_end and t.planned_end < now_date and t.actual_progress < 100 for t in tasks):
+        ai_summary += "Some tasks are currently behind schedule. "
+    else:
+        ai_summary += "Scheduling appears healthy."
+
+    # Final data bundle
+    report_data = {
+        "name": project.name,
+        "customer": project.customer or "N/A",
+        "methodology": project.methodology,
+        "is_recovery_mode": project.is_recovery_mode,
+        "progress": overall_progress,
+        "tasks_total": tasks_total,
+        "tasks_completed": tasks_completed,
+        "remaining_hours": remaining_hours,
+        "issues_open": issues_open,
+        "issues_critical": issues_critical,
+        "issues_resolved_week": issues_resolved_week,
+        "milestones": milestones_data[:3], # Keep to top 3 for 1-page
+        "resources": project_resources,
+        "ai_summary": ai_summary
+    }
+
+    # Generate PDF
+    os.makedirs("exports", exist_ok=True)
+    filename = f"ProjectReport_{project_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    output_path = os.path.join("exports", filename)
+    
+    try:
+        report_engine.generate_project_pdf(report_data, output_path)
+        return FileResponse(output_path, filename=filename, media_type='application/pdf')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating PDF report: {str(e)}")
 
 # ==================== Server Run ====================
 
