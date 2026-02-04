@@ -262,12 +262,23 @@ class AIAssistant:
             current_workload = tasks_old + tasks_new
             
             # 1. Skill Match (0-50 points)
-            if resource.skills and required_skills:
+            # Parse skills if it's a string
+            resource_skills = resource.skills
+            if isinstance(resource_skills, str):
+                try:
+                    import json
+                    resource_skills = json.loads(resource_skills)
+                except:
+                    resource_skills = {}
+            elif not isinstance(resource_skills, dict):
+                resource_skills = {}
+            
+            if resource_skills and required_skills:
                 matched_skills = 0
                 total_skill_level = 0
                 
                 for skill in required_skills:
-                    skill_level = resource.skills.get(skill, 0)
+                    skill_level = resource_skills.get(skill, 0)
                     if skill_level > 0:
                         matched_skills += 1
                         total_skill_level += skill_level

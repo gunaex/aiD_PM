@@ -76,7 +76,7 @@
                                     Project <span class="text-red-500">*</span>
                                 </label>
                                 <select name="project_id" required
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                     <option value="">-- Select Project --</option>
                                     {% for project in projects %}
                                     <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{%
@@ -92,7 +92,7 @@
                                     Phase
                                 </label>
                                 <select name="phase_id"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                     <option value="">-- No Phase --</option>
                                     {% for phase in phases %}
                                     <option value="{{ phase.id }}">{{ phase.phase_name }} (Project #{{ phase.project_id
@@ -106,7 +106,7 @@
                                     Function / Requirement
                                 </label>
                                 <select name="function_id"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                     <option value="">-- No Function --</option>
                                     {% for func in functions %}
                                     <option value="{{ func.id }}">{{ func.function_code }}: {{ func.function_name }}
@@ -123,7 +123,7 @@
                             </label>
                             <input type="text" name="issue_title" required
                                 placeholder="e.g., Login button not working on mobile"
-                                class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                         </div>
 
                         <!-- Description -->
@@ -143,7 +143,7 @@
                                     Issue Type <span class="text-red-500">*</span>
                                 </label>
                                 <select name="issue_type" required
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                     <option value="Bug">Bug</option>
                                     <option value="Task">Task</option>
                                     <option value="Enhancement">Enhancement</option>
@@ -157,7 +157,7 @@
                                     Severity <span class="text-red-500">*</span>
                                 </label>
                                 <select name="severity" required
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                     <option value="Critical">Critical</option>
                                     <option value="High">High</option>
                                     <option value="Medium" selected>Medium</option>
@@ -170,7 +170,7 @@
                                     Priority <span class="text-red-500">*</span>
                                 </label>
                                 <select name="priority" required
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                     <option value="Critical">Critical</option>
                                     <option value="High">High</option>
                                     <option value="Medium" selected>Medium</option>
@@ -186,7 +186,7 @@
                                     Assign to (PIC)
                                 </label>
                                 <select name="pic_resource_id"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                     <option value="">-- Unassigned --</option>
                                     {% for resource in resources %}
                                     <option value="{{ resource.id }}">
@@ -201,7 +201,7 @@
                                     Due Date
                                 </label>
                                 <input type="date" name="due_date"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                             </div>
                         </div>
 
@@ -212,7 +212,7 @@
                             </a>
                             <div class="flex gap-3">
                                 <button type="reset"
-                                    class="px-6 py-3 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition">
+                                    class="px-6 py-3 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition text-black">
                                     Clear Form
                                 </button>
                                 <button type="submit"

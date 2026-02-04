@@ -1252,36 +1252,24 @@ async def ai_recommend_resources(
     db: Session = Depends(get_db)
 ):
     """AI endpoint to recommend resources"""
-    try:
-        required_skills = skills.split(",") if skills else []
-        # Clean up skill names
-        required_skills = [s.strip() for s in required_skills if s.strip()]
-        
-        recommendations = ai_assistant.recommend_resources(task_type, required_skills, db, top_n=5)
-        
-        return {
-            "success": True,
-            "recommendations": [
-                {
-                    "resource_id": r["resource"].id,
-                    "resource_name": r["resource"].full_name,
-                    "position": r["resource"].position,
-                    "score": round(r["score"], 1),
-                    "match_percentage": round(r["match_percentage"], 1),
-                    "reasons": r["reasons"],
-                    "current_workload": r["current_workload"]
-                }
-                for r in recommendations
-            ]
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error": str(e),
-            "recommendations": []
-        }
+    required_skills = skills.split(",") if skills else []
+    recommendations = ai_assistant.recommend_resources(task_type, required_skills, db, top_n=5)
+    
+    return {
+        "success": True,
+        "recommendations": [
+            {
+                "resource_id": r["resource"].id,
+                "resource_name": r["resource"].full_name,
+                "position": r["resource"].position,
+                "score": round(r["score"], 1),
+                "match_percentage": round(r["match_percentage"], 1),
+                "reasons": r["reasons"],
+                "current_workload": r["current_workload"]
+            }
+            for r in recommendations
+        ]
+    }
 
 @app.get("/api/ai/predict-risk/{task_id}")
 async def ai_predict_risk(task_id: int, db: Session = Depends(get_db)):
@@ -1416,11 +1404,6 @@ async def project_details_page(project_id: int, request: Request, db: Session = 
     # Calculate Month Data for Gantt
     months_data = get_timeline_months(timeline_start, timeline_end)
     
-    # Fetch project notes
-    notes = db.query(models.ProjectNote).filter(
-        models.ProjectNote.project_id == project_id
-    ).order_by(models.ProjectNote.created_at.desc()).all()
-    
     return templates.TemplateResponse("project_details.html", {
         "request": request,
         "project": project,
@@ -1432,8 +1415,7 @@ async def project_details_page(project_id: int, request: Request, db: Session = 
         "timeline_end": timeline_end,
         "issues": issues,
         "functions": functions,
-        "months_data": months_data,
-        "notes": notes
+        "months_data": months_data
     })
 
 @app.get("/projects/{project_id}/history", response_class=HTMLResponse)
@@ -2416,50 +2398,6 @@ async def export_project_pdf_endpoint(project_id: int, db: Session = Depends(get
         return FileResponse(output_path, filename=filename, media_type='application/pdf')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating PDF report: {str(e)}")
-
-# ==================== Project Notes ====================
-
-@app.post("/projects/{project_id}/notes")
-async def create_project_note(project_id: int, note_text: str = Form(...), db: Session = Depends(get_db)):
-    """Create a new project note"""
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    note = models.ProjectNote(
-        project_id=project_id,
-        note_text=note_text
-    )
-    db.add(note)
-    db.commit()
-    db.refresh(note)
-    
-    return RedirectResponse(url=f"/projects/{project_id}/details", status_code=303)
-
-@app.get("/projects/{project_id}/notes")
-async def get_project_notes(project_id: int, db: Session = Depends(get_db)):
-    """Get all notes for a project"""
-    notes = db.query(models.ProjectNote).filter(
-        models.ProjectNote.project_id == project_id
-    ).order_by(models.ProjectNote.created_at.desc()).all()
-    
-    return {"notes": [{"id": n.id, "text": n.note_text, "created_at": n.created_at.strftime("%Y/%b/%d | %H:%M:%S")} for n in notes]}
-
-@app.delete("/projects/{project_id}/notes/{note_id}")
-async def delete_project_note(project_id: int, note_id: int, db: Session = Depends(get_db)):
-    """Delete a project note"""
-    note = db.query(models.ProjectNote).filter(
-        models.ProjectNote.id == note_id,
-        models.ProjectNote.project_id == project_id
-    ).first()
-    
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    
-    db.delete(note)
-    db.commit()
-    
-    return {"success": True, "message": "Note deleted successfully"}
 
 # ==================== Server Run ====================
 

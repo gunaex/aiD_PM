@@ -117,7 +117,7 @@
                             <!-- Search Input -->
                             <div class="relative mb-2">
                                 <input type="text" id="resourceSearch" placeholder="Search by name, position, skills..."
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                                 <div class="absolute right-3 top-3 text-slate-400">
                                     🔍
                                 </div>
@@ -128,7 +128,7 @@
 
                             <!-- Search Results -->
                             <div id="resourceResults"
-                                class="border border-slate-300 rounded-lg bg-white max-h-64 overflow-y-auto hidden">
+                                class="border border-slate-300 rounded-lg bg-white max-h-64 overflow-y-auto hidden text-black">
                                 <!-- Results will be populated here -->
                             </div>
 
@@ -164,7 +164,7 @@
                                 <input type="text" id="function_text" name="function_text"
                                     value="{{ task.function_text or '' }}"
                                     placeholder="Enter custom function or requirement name"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                             </div>
                         </div>
 
@@ -174,7 +174,7 @@
                                 Assign to Phase (Optional)
                             </label>
                             <select id="phase_id" name="phase_id"
-                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                                 <option value="">-- No Phase --</option>
                                 {% for phase in phases %}
                                 <option value="{{ phase.id }}" {% if task.phase_id==phase.id %}selected{% endif %}>
@@ -205,7 +205,7 @@
                                 </label>
                                 <input type="number" id="estimated_hours" name="estimated_hours" min="0" step="0.5"
                                     value="{{ task.estimated_hours or 0 }}"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                             </div>
                             <div>
                                 <label for="actual_hours" class="block text-sm font-bold text-slate-700 mb-2">
@@ -213,7 +213,7 @@
                                 </label>
                                 <input type="number" id="actual_hours" name="actual_hours" min="0" step="0.5"
                                     value="{{ task.actual_hours or 0 }}"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                             </div>
                         </div>
 
@@ -239,7 +239,7 @@
                                 </label>
                                 <input type="date" id="planned_start" name="planned_start"
                                     value="{{ task.planned_start.strftime('%Y-%m-%d') if task.planned_start else '' }}"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                             </div>
                             <div>
                                 <label for="planned_end" class="block text-sm font-bold text-slate-700 mb-2">
@@ -247,7 +247,7 @@
                                 </label>
                                 <input type="date" id="planned_end" name="planned_end"
                                     value="{{ task.planned_end.strftime('%Y-%m-%d') if task.planned_end else '' }}"
-                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                             </div>
                         </div>
 

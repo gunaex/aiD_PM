@@ -147,10 +147,10 @@
                         <div>
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-sm text-slate-600">Overall Progress:</span>
-                                <span class="text-xs font-bold text-slate-600">Calculating...</span>
+                                <span class="text-xs font-bold text-slate-600">{{ project.progress|round(1) }}%</span>
                             </div>
                             <div class="w-full bg-slate-100 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full" style="width: 45%"></div>
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: {{ project.progress }}%"></div>
                             </div>
                         </div>
                     </div>

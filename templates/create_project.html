@@ -93,7 +93,7 @@
                                 Customer / Client
                             </label>
                             <input type="text" id="customer" name="customer" placeholder="e.g., ABC Corporation"
-                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                             <p class="text-xs text-slate-500 mt-1">Optional - Leave blank for internal projects</p>
                         </div>
 
@@ -118,7 +118,7 @@
                                 Budget Indicator
                             </label>
                             <select id="budget_masked" name="budget_masked"
-                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black">
                                 <option value="">-- Not Specified --</option>
                                 <option value="฿">฿ (Small)</option>
                                 <option value="฿฿">฿฿ (Medium)</option>
@@ -183,11 +183,11 @@
                                     </div>
                                     <div class="col-span-3">
                                         <input type="date" name="phase_starts" value="${start}"
-                                            class="w-full text-xs border border-slate-300 rounded px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500">
+                                            class="w-full text-xs border border-slate-300 rounded px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500 text-black">
                                     </div>
                                     <div class="col-span-3">
                                         <input type="date" name="phase_ends" value="${end}"
-                                            class="w-full text-xs border border-slate-300 rounded px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500">
+                                            class="w-full text-xs border border-slate-300 rounded px-2 py-1 text-slate-900 focus:ring-2 focus:ring-blue-500 text-black">
                                     </div>
                                     <div class="col-span-1 text-center">
                                         <button type="button" onclick="removePhaseRow(this)"
@@ -226,7 +226,7 @@
                 </a>
                 <div class="flex gap-3">
                     <button type="reset"
-                        class="px-6 py-3 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition">
+                        class="px-6 py-3 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition text-black">
                         Clear Form
                     </button>
                     <button type="submit"

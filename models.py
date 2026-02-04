@@ -197,3 +197,13 @@ class ProjectFunction(Base):
     parent = relationship("ProjectFunction", remote_side=[id], backref="children")
     tasks = relationship("Task", back_populates="function")
     issues = relationship("Issue", back_populates="function")
+
+class ProjectNote(Base):
+    __tablename__ = "project_notes"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    note_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationship
+    project = relationship("Project", backref="notes")

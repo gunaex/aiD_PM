@@ -89,7 +89,7 @@
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 mb-1">Position</label>
                                     <select name="position"
-                                        class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                         <option value="">Select Position</option>
                                         <option value="Dev">Developer</option>
                                         <option value="SA">System Analyst</option>
@@ -102,7 +102,7 @@
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-1">Company</label>
                                 <input type="text" name="company" placeholder="e.g. Outsourcing Co., Ltd."
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -130,9 +130,9 @@
                                     </div>
                                     <div class="flex gap-2">
                                         <input type="text" id="new-skill-name" placeholder="Skill (e.g. Python)"
-                                            class="flex-1 text-xs text-slate-900 border border-slate-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            class="flex-1 text-xs text-slate-900 border border-slate-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                         <input type="number" id="new-skill-level" min="1" max="10" placeholder="Lvl"
-                                            class="w-16 text-xs text-slate-900 border border-slate-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            class="w-16 text-xs text-slate-900 border border-slate-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                                         <button type="button" onclick="addSkill()"
                                             class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700">
                                             Add
@@ -267,20 +267,20 @@
                             <label class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Full
                                 Name</label>
                             <input type="text" name="full_name" id="edit_full_name" required
-                                class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Nickname</label>
                                 <input type="text" name="nickname" id="edit_nickname" required
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
                             </div>
                             <div>
                                 <label
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Position</label>
                                 <select name="position" id="edit_position"
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
                                     <option value="Dev">Developer</option>
                                     <option value="SA">System Analyst</option>
                                     <option value="Tester">Tester</option>
@@ -293,7 +293,7 @@
                             <label
                                 class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Company</label>
                             <input type="text" name="company" id="edit_company"
-                                class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -301,14 +301,14 @@
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Speed
                                     (1-10)</label>
                                 <input type="number" name="speed" id="edit_speed" min="1" max="10"
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
                             </div>
                             <div>
                                 <label
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Quality
                                     (1-10)</label>
                                 <input type="number" name="quality" id="edit_quality" min="1" max="10"
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
                             </div>
                         </div>
                     </div>
@@ -321,9 +321,9 @@
                                 <div id="edit-skills-list" class="flex flex-wrap gap-2 mb-3"></div>
                                 <div class="flex gap-2">
                                     <input type="text" id="edit-new-skill-name" placeholder="Skill"
-                                        class="flex-1 text-xs text-slate-900 border border-slate-300 p-1 rounded">
+                                        class="flex-1 text-xs text-slate-900 border border-slate-300 p-1 rounded text-black">
                                     <input type="number" id="edit-new-skill-level" min="1" max="10" placeholder="Lvl"
-                                        class="w-12 text-xs text-slate-900 border border-slate-300 p-1 rounded">
+                                        class="w-12 text-xs text-slate-900 border border-slate-300 p-1 rounded text-black">
                                     <button type="button" onclick="addEditSkill()"
                                         class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold">Add</button>
                                 </div>
