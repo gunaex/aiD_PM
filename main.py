@@ -2,18 +2,58 @@ from fastapi import FastAPI, Depends, HTTPException, Form, Request, File, Upload
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 import datetime
 import os
 import re
+import shutil
+import threading
+import time
 
 import models
 from database import engine, get_db, init_db
 import excel_engine
 from ai_assistant import ai_assistant
+
+def auto_backup_worker():
+    """Background worker that performs hourly backups with rotation (keeps last 24)"""
+    BACKUP_DIR = "backups_auto"
+    MAX_BACKUPS = 24
+    INTERVAL = 3600 # 1 hour
+    
+    # Create backup directory if it doesn't exist
+    if not os.path.exists(BACKUP_DIR):
+        try:
+            os.makedirs(BACKUP_DIR)
+        except Exception:
+            pass
+            
+    while True:
+        try:
+            # Perform backup
+            if os.path.exists("pm_system.db"):
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_filename = f"aiD_PM_auto_backup_{timestamp}.db"
+                backup_path = os.path.join(BACKUP_DIR, backup_filename)
+                shutil.copy("pm_system.db", backup_path)
+                
+                # Rotation logic: Keep only the last MAX_BACKUPS
+                files = [f for f in os.listdir(BACKUP_DIR) if f.startswith("aiD_PM_auto_backup_") and f.endswith(".db")]
+                files.sort() # Sort alphabetically (works for YYYYMMDD_HHMMSS)
+                
+                while len(files) > MAX_BACKUPS:
+                    oldest_file = files.pop(0)
+                    os.remove(os.path.join(BACKUP_DIR, oldest_file))
+        except Exception as e:
+            print(f"[AUTH-BACKUP ERROR] {e}")
+            
+        time.sleep(INTERVAL)
+
+# Start auto-backup thread as a daemon
+threading.Thread(target=auto_backup_worker, daemon=True).start()
 
 # สร้างตารางในฐานข้อมูล
 init_db()
@@ -53,6 +93,42 @@ def generate_task_id(customer: str, project_name: str, db: Session) -> str:
     
     # Format with leading zeros
     return f"{base_prefix}{next_number:03d}"
+
+
+    return f"FUNC-{next_number:03d}"
+
+
+def get_timeline_months(start_date, end_date):
+    """Calculate precisely how much of each month is covered by the timeline"""
+    months = []
+    total_days = (end_date - start_date).days
+    if total_days <= 0:
+        return []
+    
+    curr = start_date
+    while curr < end_date:
+        m_name = curr.strftime("%b")
+        m_year = curr.year
+        
+        # Calculate next month start
+        if curr.month == 12:
+            next_m_start = datetime.date(curr.year + 1, 1, 1)
+        else:
+            next_m_start = datetime.date(curr.year, curr.month + 1, 1)
+            
+        segment_end = min(next_m_start, end_date)
+        days_in_segment = (segment_end - curr).days
+        
+        if days_in_segment > 0:
+            months.append({
+                "name": m_name,
+                "year": m_year,
+                "width_pct": (days_in_segment / total_days) * 100,
+                "days": days_in_segment
+            })
+        curr = segment_end
+    return months
+
 
 app = FastAPI(title="Smart PM Control Tower (aiD_PM)", version="1.5.0 - AI Powered")
 
@@ -262,7 +338,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             'project': project,
             'progress': round(progress, 1),
             'task_count': len(tasks),
-            'completed_tasks': len([t for t in tasks if t.actual_progress == 100])
+            'completed_tasks': len([t for t in tasks if t.actual_progress == 100]),
+            'function_count': db.query(models.ProjectFunction).filter(models.ProjectFunction.project_id == project.id).count()
         })
     
     return templates.TemplateResponse("dashboard.html", {
@@ -451,9 +528,12 @@ async def workload_page(request: Request, db: Session = Depends(get_db)):
     # Sort by task count (descending)
     workload_data.sort(key=lambda x: x['task_count'], reverse=True)
     
+    projects = db.query(models.Project).all()
+    
     return templates.TemplateResponse("workload.html", {
         "request": request,
         "resources": resources,
+        "projects": projects,
         "workload_data": workload_data
     })
 
@@ -623,70 +703,114 @@ async def calendar_grid_page(
         "tasks_json": tasks_json
     })
 
-@app.get("/gantt", response_class=HTMLResponse)
-async def gantt_page(request: Request, project_id: Optional[int] = None, db: Session = Depends(get_db)):
-    """หน้า Gantt Chart - แสดง Timeline ของ Tasks แบบ Gantt"""
+@app.get("/tracking", response_class=HTMLResponse)
+async def tracking_page(request: Request, project_id: Optional[int] = None, db: Session = Depends(get_db)):
+    """หน้า Tracking - แสดง Timeline ของ Requirements และ Tasks"""
     import json
     
     projects = db.query(models.Project).all()
-    
-    # Filter tasks by project if specified
-    query = db.query(models.Task)
+    selected_project = None
     if project_id:
-        query = query.filter(models.Task.project_id == project_id)
-    
-    # Only get tasks with planned dates
-    tasks = query.filter(
-        models.Task.planned_start.isnot(None),
-        models.Task.planned_end.isnot(None)
-    ).order_by(models.Task.planned_start).all()
-    
-    # Calculate date range
-    date_range = {
-        'start': None,
-        'end': None,
-        'duration': 0
-    }
-    
-    if tasks:
-        # Find min start and max end
-        start_dates = [t.planned_start for t in tasks if t.planned_start]
-        end_dates = [t.planned_end for t in tasks if t.planned_end]
-        
-        if start_dates and end_dates:
-            min_date = min(start_dates)
-            max_date = max(end_dates)
+        selected_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+
+    # ดึงข้อมูล Functions (Requirements) และ Tasks
+    # หากเลือก Project เฉพาะเจาะจง จะแสดงข้อมูล Hierarchy
+    hierarchy = []
+    all_tasks = []
+    date_range = {'start': None, 'end': None, 'duration': 0}
+
+    if project_id:
+        # ดึง Root Functions
+        root_functions = db.query(models.ProjectFunction).filter(
+            models.ProjectFunction.project_id == project_id,
+            models.ProjectFunction.parent_function_id == None
+        ).order_by(models.ProjectFunction.id).all()
+
+        # ดึง Tasks ทั้งหมดของโปรเจกต์ (รวมที่ไม่มี Function)
+        all_tasks = db.query(models.Task).filter(models.Task.project_id == project_id).all()
+
+        # Helper to build hierarchy
+        def build_node(func):
+            # Tasks linked to this function
+            func_tasks = [t for t in all_tasks if t.function_id == func.id]
             
-            # Add padding (1 week before/after)
-            min_date = min_date - datetime.timedelta(days=7)
-            max_date = max_date + datetime.timedelta(days=7)
+            # Sub-functions
+            sub_funcs = db.query(models.ProjectFunction).filter(
+                models.ProjectFunction.parent_function_id == func.id
+            ).all()
             
+            children = [build_node(sf) for sf in sub_funcs]
+            task_nodes = [{
+                    'id': f"task_{t.id}",
+                    'type': 'task',
+                    'name': t.task_name,
+                    'status': 'completed' if t.actual_progress == 100 else 'in_progress',
+                    'progress': float(t.actual_progress),
+                    'planned_start': t.planned_start.strftime('%Y-%m-%d') if t.planned_start else None,
+                    'planned_end': t.planned_end.strftime('%Y-%m-%d') if t.planned_end else None,
+                    'assigned_to': t.assigned_resource.nickname if t.assigned_resource else None
+                } for t in func_tasks]
+            
+            all_children = children + task_nodes
+            
+            # Aggregate dates from children for the function bar
+            child_starts = [c['planned_start'] for c in all_children if c.get('planned_start')]
+            child_ends = [c['planned_end'] for c in all_children if c.get('planned_end')]
+            
+            f_start = min(child_starts) if child_starts else None
+            f_end = max(child_ends) if child_ends else None
+
+            return {
+                'id': f"func_{func.id}",
+                'type': 'function',
+                'name': func.function_name,
+                'code': func.function_code,
+                'status': func.status,
+                'estimated_hours': func.estimated_hours,
+                'actual_hours': func.actual_hours,
+                'progress': (func.actual_hours / func.estimated_hours * 100) if func.estimated_hours > 0 else 0,
+                'planned_start': f_start,
+                'planned_end': f_end,
+                'children': all_children
+            }
+
+        hierarchy = [build_node(rf) for rf in root_functions]
+
+        # Add orphan tasks (no function)
+        orphan_tasks = [t for t in all_tasks if t.function_id == None]
+        if orphan_tasks:
+            hierarchy.append({
+                'id': 'orphan_group',
+                'type': 'group',
+                'name': 'Other Tasks',
+                'children': [{
+                    'id': f"task_{t.id}",
+                    'type': 'task',
+                    'name': t.task_name,
+                    'status': 'completed' if t.actual_progress == 100 else 'in_progress',
+                    'progress': float(t.actual_progress),
+                    'planned_start': t.planned_start.strftime('%Y-%m-%d') if t.planned_start else None,
+                    'planned_end': t.planned_end.strftime('%Y-%m-%d') if t.planned_end else None,
+                } for t in orphan_tasks]
+            })
+
+        # Calculate date range for timeline
+        starts = [t.planned_start for t in all_tasks if t.planned_start]
+        ends = [t.planned_end for t in all_tasks if t.planned_end]
+        if starts and ends:
+            min_date = min(starts) - datetime.timedelta(days=7)
+            max_date = max(ends) + datetime.timedelta(days=7)
             date_range['start'] = min_date.strftime('%Y-%m-%d')
             date_range['end'] = max_date.strftime('%Y-%m-%d')
             date_range['duration'] = (max_date - min_date).days
-    
-    # Convert tasks to JSON for JavaScript
-    tasks_json = json.dumps([{
-        'id': t.id,
-        'task_name': t.task_name,
-        'task_type': t.task_type,
-        'project_id': t.project_id,
-        'planned_start': t.planned_start.strftime('%Y-%m-%d') if t.planned_start else None,
-        'planned_end': t.planned_end.strftime('%Y-%m-%d') if t.planned_end else None,
-        'actual_progress': float(t.actual_progress),
-        'assigned_resource_id': t.assigned_resource_id
-    } for t in tasks])
-    
-    date_range_json = json.dumps(date_range)
-    
-    return templates.TemplateResponse("gantt.html", {
+
+    return templates.TemplateResponse("tracking.html", {
         "request": request,
         "projects": projects,
-        "tasks": tasks,
         "selected_project_id": project_id,
-        "date_range": date_range,
-        "tasks_json": tasks_json,
-        "date_range_json": date_range_json
+        "selected_project": selected_project,
+        "hierarchy_json": json.dumps(hierarchy),
+        "date_range_json": json.dumps(date_range)
     })
 
 # ==================== Issue Management Routes ====================
@@ -732,12 +856,16 @@ async def create_issue_page(request: Request, project_id: Optional[int] = None, 
     projects = db.query(models.Project).all()
     phases = db.query(models.ProjectPhase).all()
     resources = db.query(models.Resource).filter(models.Resource.is_active == True).all()
+    functions = []
+    if project_id:
+        functions = db.query(models.ProjectFunction).filter(models.ProjectFunction.project_id == project_id).all()
     
     return templates.TemplateResponse("create_issue.html", {
         "request": request,
         "projects": projects,
         "phases": phases,
         "resources": resources,
+        "functions": functions,
         "selected_project_id": project_id
     })
 
@@ -751,6 +879,7 @@ async def create_issue_form(
     severity: str = Form("Medium"),
     priority: str = Form("Medium"),
     pic_resource_id: Optional[int] = Form(None),
+    function_id: Optional[int] = Form(None),
     due_date: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -764,6 +893,7 @@ async def create_issue_form(
         severity=severity,
         priority=priority,
         status="Open",
+        function_id=function_id if function_id else None,
         pic_resource_id=pic_resource_id if pic_resource_id else None,
         due_date=datetime.datetime.strptime(due_date, '%Y-%m-%d').date() if due_date else None
     )
@@ -788,13 +918,17 @@ async def issue_details_page(issue_id: int, request: Request, db: Session = Depe
     phases = db.query(models.ProjectPhase).filter(
         models.ProjectPhase.project_id == issue.project_id
     ).all()
+    functions = db.query(models.ProjectFunction).filter(
+        models.ProjectFunction.project_id == issue.project_id
+    ).all()
     
     return templates.TemplateResponse("issue_details.html", {
         "request": request,
         "issue": issue,
         "comments": comments,
         "resources": resources,
-        "phases": phases
+        "phases": phases,
+        "functions": functions
     })
 
 @app.post("/issues/{issue_id}/update")
@@ -804,6 +938,7 @@ async def update_issue_form(
     severity: Optional[str] = Form(None),
     priority: Optional[str] = Form(None),
     pic_resource_id: Optional[int] = Form(None),
+    function_id: Optional[int] = Form(None),
     resolution: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -820,6 +955,8 @@ async def update_issue_form(
         issue.priority = priority
     if pic_resource_id:
         issue.pic_resource_id = pic_resource_id
+    if function_id:
+        issue.function_id = function_id
     if resolution:
         issue.resolution = resolution
     
@@ -856,7 +993,7 @@ async def phases_page(request: Request, project_id: Optional[int] = None, db: Se
     """หน้าจัดการ Project Phases"""
     projects = db.query(models.Project).all()
     
-    query = db.query(models.ProjectPhase)
+    query = db.query(models.ProjectPhase).options(joinedload(models.ProjectPhase.project))
     if project_id:
         query = query.filter(models.ProjectPhase.project_id == project_id)
     
@@ -893,6 +1030,186 @@ async def create_phase_form(
     db.commit()
     
     return RedirectResponse(url=f"/phases?project_id={project_id}", status_code=303)
+
+@app.post("/phases/{phase_id}/update")
+async def update_phase(
+    phase_id: int,
+    phase_name: Optional[str] = Form(None),
+    planned_start: Optional[str] = Form(None),
+    planned_end: Optional[str] = Form(None),
+    phase_order: Optional[int] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Update phase details via API"""
+    phase = db.query(models.ProjectPhase).filter(models.ProjectPhase.id == phase_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Phase not found")
+    
+    # Update fields if provided
+
+# ==================== Functions/Requirements Routes ====================
+
+@app.get("/functions", response_class=HTMLResponse)
+async def functions_page(request: Request, project_id: Optional[int] = None, db: Session = Depends(get_db)):
+    """Functions/Requirements management page"""
+    projects = db.query(models.Project).all()
+    
+    query = db.query(models.ProjectFunction).options(joinedload(models.ProjectFunction.project))
+    if project_id:
+        query = query.filter(models.ProjectFunction.project_id == project_id)
+    
+    functions = query.order_by(models.ProjectFunction.project_id, models.ProjectFunction.function_code).all()
+    
+    return templates.TemplateResponse("functions.html", {
+        "request": request,
+        "projects": projects,
+        "functions": functions,
+        "selected_project_id": project_id
+    })
+
+@app.post("/functions/create")
+async def create_function(
+    project_id: int = Form(...),
+    function_name: str = Form(...),
+    parent_function_id: Optional[int] = Form(None),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    priority: str = Form("medium"),
+    estimated_hours: float = Form(0.0),
+    db: Session = Depends(get_db)
+):
+    """Create new function/requirement"""
+    # Generate function code
+    function_code = generate_function_code(project_id, db)
+    
+    function = models.ProjectFunction(
+        project_id=project_id,
+        parent_function_id=parent_function_id if parent_function_id else None,
+        function_code=function_code,
+        function_name=function_name,
+        description=description,
+        category=category,
+        priority=priority,
+        estimated_hours=estimated_hours,
+        status="not_started"
+    )
+    db.add(function)
+    db.commit()
+    
+    return RedirectResponse(url=f"/functions?project_id={project_id}", status_code=303)
+
+@app.post("/functions/{function_id}/update")
+async def update_function(
+    function_id: int,
+    function_name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    priority: Optional[str] = Form(None),
+    status: Optional[str] = Form(None),
+    estimated_hours: Optional[float] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Update function details"""
+    function = db.query(models.ProjectFunction).filter(models.ProjectFunction.id == function_id).first()
+    if not function:
+        raise HTTPException(status_code=404, detail="Function not found")
+    
+    if function_name is not None and function_name.strip():
+        function.function_name = function_name.strip()
+    if description is not None:
+        function.description = description
+    if category is not None:
+        function.category = category
+    if priority is not None:
+        function.priority = priority
+    if status is not None:
+        function.status = status
+    if estimated_hours is not None:
+        function.estimated_hours = estimated_hours
+    
+    function.updated_at = datetime.datetime.utcnow()
+    db.commit()
+    db.refresh(function)
+    
+    return {
+        "status": "success",
+        "function_id": function_id,
+        "function_name": function.function_name
+    }
+
+@app.post("/functions/{function_id}/delete")
+async def delete_function(function_id: int, db: Session = Depends(get_db)):
+    """Delete function (with cascade handling)"""
+    function = db.query(models.ProjectFunction).filter(models.ProjectFunction.id == function_id).first()
+    if not function:
+        raise HTTPException(status_code=404, detail="Function not found")
+    
+    # Check if function has tasks or issues
+    task_count = db.query(models.Task).filter(models.Task.function_id == function_id).count()
+    issue_count = db.query(models.Issue).filter(models.Issue.function_id == function_id).count()
+    
+    if task_count > 0 or issue_count > 0:
+        return {
+            "status": "warning",
+            "message": f"Function has {task_count} tasks and {issue_count} issues. These will be unlinked.",
+            "task_count": task_count,
+            "issue_count": issue_count
+        }
+    
+    project_id = function.project_id
+    db.delete(function)
+    db.commit()
+    
+    return RedirectResponse(url=f"/functions?project_id={project_id}", status_code=303)
+
+@app.get("/api/functions/{project_id}")
+async def get_functions_api(project_id: int, db: Session = Depends(get_db)):
+    """API endpoint to get functions for a project (for dropdowns)"""
+    functions = db.query(models.ProjectFunction).filter(
+        models.ProjectFunction.project_id == project_id
+    ).order_by(models.ProjectFunction.function_code).all()
+    
+    result = []
+    for func in functions:
+        # Calculate progress
+        tasks = db.query(models.Task).filter(models.Task.function_id == func.id).all()
+        total_tasks = len(tasks)
+        completed_tasks = sum(1 for t in tasks if t.actual_progress >= 100)
+        progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        
+        result.append({
+            "id": func.id,
+            "function_code": func.function_code,
+            "function_name": func.function_name,
+            "parent_function_id": func.parent_function_id,
+            "status": func.status,
+            "priority": func.priority,
+            "estimated_hours": func.estimated_hours,
+            "actual_hours": func.actual_hours,
+            "progress": round(progress, 1),
+            "task_count": total_tasks
+        })
+    
+    return {"functions": result}
+    if phase_name is not None and phase_name.strip():
+        phase.phase_name = phase_name.strip()
+    if planned_start is not None:
+        phase.planned_start = datetime.datetime.strptime(planned_start, '%Y-%m-%d').date() if planned_start else None
+    if planned_end is not None:
+        phase.planned_end = datetime.datetime.strptime(planned_end, '%Y-%m-%d').date() if planned_end else None
+    if phase_order is not None:
+        phase.phase_order = phase_order
+    
+    db.commit()
+    db.refresh(phase)
+    
+    return {
+        "status": "success",
+        "phase_id": phase_id,
+        "phase_name": phase.phase_name,
+        "planned_start": phase.planned_start.strftime('%Y-%m-%d') if phase.planned_start else None,
+        "planned_end": phase.planned_end.strftime('%Y-%m-%d') if phase.planned_end else None
+    }
 
 # ==================== AI Assistant Routes ====================
 
@@ -1079,6 +1396,12 @@ async def project_details_page(project_id: int, request: Request, db: Session = 
 
     # Fetch Issues for this project
     issues = db.query(models.Issue).filter(models.Issue.project_id == project_id).all()
+
+    # Fetch Functions for this project
+    functions = db.query(models.ProjectFunction).filter(models.ProjectFunction.project_id == project_id).all()
+
+    # Calculate Month Data for Gantt
+    months_data = get_timeline_months(timeline_start, timeline_end)
     
     return templates.TemplateResponse("project_details.html", {
         "request": request,
@@ -1089,7 +1412,9 @@ async def project_details_page(project_id: int, request: Request, db: Session = 
         "phases": phases,
         "timeline_start": timeline_start,
         "timeline_end": timeline_end,
-        "issues": issues
+        "issues": issues,
+        "functions": functions,
+        "months_data": months_data
     })
 
 @app.get("/projects/{project_id}/history", response_class=HTMLResponse)
@@ -1126,12 +1451,14 @@ async def create_task_page(request: Request, project_id: int, db: Session = Depe
     
     resources = db.query(models.Resource).filter(models.Resource.is_active == True).all()
     phases = db.query(models.ProjectPhase).filter(models.ProjectPhase.project_id == project_id).all()
+    functions = db.query(models.ProjectFunction).filter(models.ProjectFunction.project_id == project_id).all()
     
     return templates.TemplateResponse("create_task.html", {
         "request": request,
         "project": project,
         "resources": resources,
-        "phases": phases
+        "phases": phases,
+        "functions": functions
     })
 
 @app.get("/tasks/{task_id}/edit", response_class=HTMLResponse)
@@ -1143,6 +1470,7 @@ async def edit_task_page(task_id: int, request: Request, db: Session = Depends(g
     
     resources = db.query(models.Resource).filter(models.Resource.is_active == True).all()
     phases = db.query(models.ProjectPhase).filter(models.ProjectPhase.project_id == task.project_id).all()
+    functions = db.query(models.ProjectFunction).filter(models.ProjectFunction.project_id == task.project_id).all()
     
     # Get currently assigned resources (both primary and multi-assigned)
     assigned_resource_ids = set()
@@ -1163,6 +1491,7 @@ async def edit_task_page(task_id: int, request: Request, db: Session = Depends(g
         "task": task,
         "resources": resources,
         "phases": phases,
+        "functions": functions,
         "assigned_resource_ids": list(assigned_resource_ids)
     })
 
@@ -1196,6 +1525,33 @@ async def add_resource(
     )
     db.add(new_res)
     db.commit()
+    return RedirectResponse(url="/resources", status_code=303)
+
+@app.post("/resources/{resource_id}/update")
+async def update_resource(
+    resource_id: int,
+    full_name: str = Form(...),
+    nickname: str = Form(...),
+    position: str = Form(""),
+    speed: int = Form(5),
+    quality: int = Form(5),
+    company: Optional[str] = Form(None),
+    comment: Optional[str] = Form(None),
+    skills_json: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """อัปเดตข้อมูล Resource"""
+    resource = db.query(models.Resource).filter(models.Resource.id == resource_id).first()
+    if resource:
+        resource.full_name = full_name
+        resource.nickname = nickname
+        resource.position = position
+        resource.speed_score = speed
+        resource.quality_score = quality
+        resource.company = company
+        resource.comment = comment
+        resource.skills = skills_json
+        db.commit()
     return RedirectResponse(url="/resources", status_code=303)
 
 @app.post("/projects/create")
@@ -1276,6 +1632,10 @@ async def create_task_form(
     weight_score: float = Form(...),
     resource_ids: List[int] = Form([]),  # Multi-select support
     phase_id: Optional[str] = Form(None),  # Accept as string first to validate
+    function_id: Optional[str] = Form(None),
+    function_text: Optional[str] = Form(None),
+    estimated_hours: float = Form(0.0),
+    actual_hours: float = Form(0.0),
     planned_start: Optional[str] = Form(None),
     planned_end: Optional[str] = Form(None),
     next_url: Optional[str] = Form(None),
@@ -1298,6 +1658,14 @@ async def create_task_form(
     # Generate unique Task ID
     task_id = generate_task_id(project.customer, project.name, db)
     
+    # Handle function_id validation
+    validated_function_id = None
+    if function_id and function_id.strip() and function_id != "custom":
+        try:
+            validated_function_id = int(function_id)
+        except ValueError:
+            pass
+
     task = models.Task(
         task_id=task_id,  # NEW: Add unique Task ID
         project_id=project_id,
@@ -1306,6 +1674,10 @@ async def create_task_form(
         weight_score=weight_score,
         assigned_resource_id=resource_ids[0] if resource_ids and len(resource_ids) > 0 else None,  # Safe access
         phase_id=validated_phase_id,  # Use validated phase ID
+        function_id=validated_function_id,
+        function_text=function_text.strip() if function_text else None,
+        estimated_hours=estimated_hours,
+        actual_hours=actual_hours,
         planned_start=datetime.datetime.strptime(planned_start, '%Y-%m-%d').date() if planned_start else None,
         planned_end=datetime.datetime.strptime(planned_end, '%Y-%m-%d').date() if planned_end else None,
         actual_progress=0.0
@@ -1336,6 +1708,10 @@ async def edit_task_form(
     actual_progress: float = Form(...),
     resource_ids: List[int] = Form([]),  # Multi-select support
     phase_id: Optional[str] = Form(None),  # Accept as string first to validate
+    function_id: Optional[str] = Form(None),
+    function_text: Optional[str] = Form(None),
+    estimated_hours: float = Form(0.0),
+    actual_hours: float = Form(0.0),
     planned_start: Optional[str] = Form(None),
     planned_end: Optional[str] = Form(None),
     next_url: Optional[str] = Form(None),
@@ -1346,20 +1722,32 @@ async def edit_task_form(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    # Handle phase_id validation (convert empty string to None)
+    # Handle phase_id validation
     validated_phase_id = None
     if phase_id and phase_id.strip():
         try:
             validated_phase_id = int(phase_id)
         except ValueError:
-            raise HTTPException(status_code=422, detail="Invalid phase ID")
-    
+            pass
+            
+    # Handle function_id validation
+    validated_function_id = None
+    if function_id and function_id.strip() and function_id != "custom":
+        try:
+            validated_function_id = int(function_id)
+        except ValueError:
+            pass
+
     task.task_name = task_name
     task.task_type = task_type
     task.weight_score = weight_score
     task.actual_progress = actual_progress
     task.assigned_resource_id = resource_ids[0] if resource_ids else None  # Primary
-    task.phase_id = validated_phase_id  # Use validated phase ID
+    task.phase_id = validated_phase_id
+    task.function_id = validated_function_id
+    task.function_text = function_text.strip() if function_text else None
+    task.estimated_hours = estimated_hours
+    task.actual_hours = actual_hours
     task.planned_start = datetime.datetime.strptime(planned_start, '%Y-%m-%d').date() if planned_start else None
     task.planned_end = datetime.datetime.strptime(planned_end, '%Y-%m-%d').date() if planned_end else None
     
@@ -1872,6 +2260,9 @@ def export_weekly_report_endpoint(project_id: int, db: Session = Depends(get_db)
     template_path = "templates_excel/WeeklyReport_PH(PU).xlsx"
     output_path = f"exports/WeeklyReport_Project_{project_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     
+    # Create exports directory if it doesn't exist
+    os.makedirs("exports", exist_ok=True)
+    
     if not os.path.exists(template_path):
         raise HTTPException(status_code=404, detail="Template file not found")
     
@@ -1886,6 +2277,9 @@ def export_daily_progress_endpoint(project_id: int, db: Session = Depends(get_db
     """ส่งออก Daily Progress Report เป็น Excel"""
     template_path = "templates_excel/Daily_Progress_PH(PU).xls"
     output_path = f"exports/DailyProgress_Project_{project_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xls"
+    
+    # Create exports directory if it doesn't exist
+    os.makedirs("exports", exist_ok=True)
     
     if not os.path.exists(template_path):
         raise HTTPException(status_code=404, detail="Template file not found")

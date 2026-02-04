@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Boolean, JSON, DateTime
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Boolean, JSON, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import datetime
@@ -19,6 +19,7 @@ class Project(Base):
     # Relationships
     tasks = relationship("Task", back_populates="project")
     phases = relationship("ProjectPhase", back_populates="project")
+    functions = relationship("ProjectFunction", back_populates="project", cascade="all, delete-orphan")
 
 class Resource(Base):
     __tablename__ = "resources"
@@ -45,13 +46,18 @@ class Task(Base):
     actual_progress = Column(Float, default=0.0)
     planned_start = Column(Date, nullable=True)
     planned_end = Column(Date, nullable=True)
+    estimated_hours = Column(Float, default=0.0)
+    actual_hours = Column(Float, default=0.0)
     phase_id = Column(Integer, ForeignKey("project_phases.id"), nullable=True)  # NEW: Link to phase
+    function_id = Column(Integer, ForeignKey("project_functions.id"), nullable=True)  # Link to function
+    function_text = Column(String, nullable=True)  # Free text function entry
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships
     project = relationship("Project", back_populates="tasks")
     assigned_resource = relationship("Resource", foreign_keys=[assigned_resource_id])
     phase = relationship("ProjectPhase", back_populates="tasks")  # NEW
+    function = relationship("ProjectFunction", back_populates="tasks")
     task_resources = relationship("TaskResource", back_populates="task", cascade="all, delete-orphan")
 
 class TaskResource(Base):
@@ -122,6 +128,7 @@ class Issue(Base):
     severity = Column(String, default="Medium")
     priority = Column(String, default="Medium")
     status = Column(String, default="Open")
+    function_id = Column(Integer, ForeignKey("project_functions.id"), nullable=True)  # Link to function
     pic_resource_id = Column(Integer, ForeignKey("resources.id"), nullable=True)
     reporter_name = Column(String, default="System")
     resolution = Column(String, nullable=True)
@@ -129,6 +136,9 @@ class Issue(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     closed_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    function = relationship("ProjectFunction", back_populates="issues")
 
 class IssueResource(Base):
     """Many-to-Many: Issue <-> Resource"""
@@ -156,3 +166,34 @@ class IssueAttachment(Base):
     file_path = Column(String, nullable=False)
     uploaded_by = Column(String, default="User")
     uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class ProjectFunction(Base):
+    """Functions/Requirements for a project with hierarchical support"""
+    __tablename__ = "project_functions"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    parent_function_id = Column(Integer, ForeignKey("project_functions.id"), nullable=True)
+    
+    # Core fields
+    function_code = Column(String, unique=True, index=True)  # Auto: FUNC-001
+    function_name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String, nullable=True)  # e.g., "Authentication", "Reporting"
+    
+    # Status & Priority
+    status = Column(String, default="not_started")  # not_started, in_progress, completed, on_hold
+    priority = Column(String, default="medium")  # high, medium, low
+    
+    # Effort tracking
+    estimated_hours = Column(Float, default=0.0)
+    actual_hours = Column(Float, default=0.0)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    # Relationships
+    project = relationship("Project", back_populates="functions")
+    parent = relationship("ProjectFunction", remote_side=[id], backref="children")
+    tasks = relationship("Task", back_populates="function")
+    issues = relationship("Issue", back_populates="function")

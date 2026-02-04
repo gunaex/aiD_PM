@@ -36,8 +36,8 @@
                     class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Projects</a>
                 <a href="/kanban"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
-                <a href="/gantt"
-                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/tracking"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Tracking</a>
                 <a href="/calendar-grid"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
 
@@ -47,6 +47,8 @@
                     Center</a>
                 <a href="/phases"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/functions"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Functions/Req</a>
                 <a href="/issues"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
             </nav>
@@ -143,6 +145,61 @@
                 <p class="text-xs text-slate-500 mt-2">Calculated from task weight scores</p>
             </div>
 
+            <!-- Requirement Progress Summary -->
+            {% if functions %}
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-slate-800 text-xl">🧩 Requirement Progress</h3>
+                    <a href="/functions?project_id={{ project.id }}"
+                        class="text-sm text-blue-600 hover:text-blue-800 font-medium">Full Requirement View →</a>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for func in functions if not func.parent_function_id %}
+                    <div class="border border-slate-100 rounded-lg p-4 bg-slate-50">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="text-[10px] font-mono font-bold text-slate-400 block mb-1">{{
+                                    func.function_code }}</span>
+                                <h4 class="font-bold text-slate-800 text-sm">{{ func.function_name }}</h4>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold
+                                {% if func.status == 'completed' %}bg-green-100 text-green-700
+                                {% elif func.status == 'in_progress' %}bg-yellow-100 text-yellow-700
+                                {% else %}bg-slate-200 text-slate-600{% endif %}">
+                                {{ func.status.replace('_', ' ') }}
+                            </span>
+                        </div>
+
+                        {% set linked_tasks = func.tasks %}
+                        {% set total_tasks = linked_tasks|length %}
+                        {% if total_tasks > 0 %}
+                        {% set total_progress = 0 %}
+                        {% for t in linked_tasks %}{% set total_progress = total_progress + t.actual_progress %}{%
+                        endfor %}
+                        {% set avg_p = (total_progress / total_tasks)|round %}
+                        {% set total_est = linked_tasks|sum(attribute='estimated_hours') %}
+                        {% set total_act = linked_tasks|sum(attribute='actual_hours') %}
+                        {% else %}
+                        {% set avg_p = 100 if func.status == 'completed' else 0 %}
+                        {% set total_est = func.estimated_hours %}
+                        {% set total_act = func.actual_hours %}
+                        {% endif %}
+
+                        <div class="space-y-3">
+                            <div class="w-full bg-slate-200 rounded-full h-1.5">
+                                <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ avg_p }}%"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-slate-500 font-bold uppercase">
+                                <span>{{ avg_p }}% Complete</span>
+                                <span>{{ "%.1f"|format(total_est) }}h / {{ "%.1f"|format(total_act) }}h</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Phase Timeline -->
             {% if phases %}
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
@@ -165,31 +222,39 @@
                     <div class="min-w-[1200px] border border-slate-300">
                         {% set total_days = (timeline_end - timeline_start).days %}
                         {% set total_months = (total_days / 30)|round(0, 'ceil')|int %}
-                        
+
                         <!-- Date Header Row -->
                         <div class="bg-slate-100 border-b border-slate-300">
-                            <div class="grid grid-cols-12 text-center text-xs font-bold text-slate-700">
-                                {% set start_month = timeline_start.month %}
-                                {% set start_year = timeline_start.year %}
-                                {% for i in range(12) %}
-                                    {% set month_offset = (start_month + i - 1) % 12 + 1 %}
-                                    {% set year_offset = start_year + ((start_month + i - 1) // 12) %}
-                                    <div class="p-2 border-r border-slate-300 last:border-r-0">
-                                        <div class="font-bold">{{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month_offset-1] }}</div>
-                                        <div class="text-slate-500">{{ year_offset }}</div>
+                            <div class="flex">
+                                <div
+                                    class="w-48 bg-slate-200 border-r border-slate-300 p-2 flex items-center justify-center text-[10px] uppercase font-bold text-slate-500">
+                                    Timeline
+                                </div>
+                                <div class="flex-1 flex text-center text-xs font-bold text-slate-700">
+                                    {% for m in months_data %}
+                                    <div class="p-2 border-r border-slate-300 last:border-r-0 overflow-hidden"
+                                        style="width: {{ m.width_pct }}%;">
+                                        <div class="font-bold truncate">{{ m.name }}</div>
+                                        <div class="text-slate-500 text-[10px]">{{ m.year }}</div>
                                     </div>
-                                {% endfor %}
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Week Numbers Row -->
+                        <!-- Week Indicators (Auto-Calculated) -->
                         <div class="bg-slate-50 border-b border-slate-300">
-                            <div class="grid grid-cols-12 text-center text-xs text-slate-600">
-                                {% for week in range(1, 13) %}
-                                <div class="p-1 border-r border-slate-300 last:border-r-0">
-                                    W{{ week }}
+                            <div class="flex">
+                                <div class="w-48 border-r border-slate-200 bg-slate-50"></div>
+                                <div class="flex-1 flex text-center text-[10px] text-slate-400">
+                                    {% set total_weeks = (total_days / 7)|round(0, 'ceil')|int %}
+                                    {% for w in range(1, total_weeks + 1) %}
+                                    <div class="p-0.5 border-r border-slate-200 last:border-r-0"
+                                        style="width: {{ (7 / total_days * 100) }}%;">
+                                        W{{ w }}
+                                    </div>
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
                             </div>
                         </div>
 
@@ -197,16 +262,18 @@
                         <div class="border-b border-slate-300">
                             <div class="flex">
                                 <!-- Project Name Column -->
-                                <div class="w-48 bg-slate-50 border-r border-slate-300 p-3 flex items-center font-bold text-slate-800">
+                                <div
+                                    class="w-48 bg-slate-50 border-r border-slate-300 p-3 flex items-center font-bold text-slate-800">
                                     {{ project.name }}
                                 </div>
-                                
+
                                 <!-- Timeline Grid -->
                                 <div class="flex-1 relative bg-white" style="height: 60px;">
-                                    <!-- Grid Lines -->
-                                    <div class="absolute inset-0 grid grid-cols-12">
-                                        {% for i in range(12) %}
-                                        <div class="border-r border-slate-200 last:border-r-0 h-full"></div>
+                                    <!-- Grid Lines (Month Borders) -->
+                                    <div class="absolute inset-0 flex">
+                                        {% for m in months_data %}
+                                        <div class="border-r border-slate-200 last:border-r-0 h-full"
+                                            style="width: {{ m.width_pct }}%;"></div>
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -220,7 +287,7 @@
                         {% set duration = (phase.planned_end - phase.planned_start).days %}
                         {% set left_pct = (start_offset / total_days * 100) %}
                         {% set width_pct = (duration / total_days * 100) %}
-                        
+
                         <div class="border-b border-slate-300 hover:bg-slate-50 transition-colors">
                             <div class="flex">
                                 <!-- Phase Name Column -->
@@ -228,25 +295,27 @@
                                     <div>
                                         <div class="font-semibold text-slate-800">{{ phase.phase_name }}</div>
                                         <div class="text-xs text-slate-500">
-                                            {{ phase.planned_start.strftime('%d %b') }} - {{ phase.planned_end.strftime('%d %b') }}
+                                            {{ phase.planned_start.strftime('%d %b') }} - {{
+                                            phase.planned_end.strftime('%d %b') }}
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Timeline Grid -->
                                 <div class="flex-1 relative bg-white" style="height: 50px;">
-                                    <!-- Grid Lines -->
-                                    <div class="absolute inset-0 grid grid-cols-12 opacity-30">
-                                        {% for i in range(12) %}
-                                        <div class="border-r border-slate-200 last:border-r-0 h-full"></div>
+                                    <!-- Grid Lines (Month Borders) -->
+                                    <div class="absolute inset-0 flex opacity-30">
+                                        {% for m in months_data %}
+                                        <div class="border-r border-slate-200 last:border-r-0 h-full"
+                                            style="width: {{ m.width_pct }}%;"></div>
                                         {% endfor %}
                                     </div>
-                                    
+
                                     <!-- Phase Bar -->
                                     <div class="absolute top-1/2 transform -translate-y-1/2 h-6 rounded shadow-sm cursor-pointer transition-all hover:shadow-md
                                               {% if phase.is_recovery_mode %}bg-red-400 hover:bg-red-500{% else %}bg-blue-400 hover:bg-blue-500{% endif %}"
-                                         style="left: {{ left_pct }}%; width: {{ width_pct }}%; min-width: 20px"
-                                         onclick="showPhaseDetails('{{ phase.phase_name }}', '{{ phase.planned_start.strftime('%d %b %Y') }}', '{{ phase.planned_end.strftime('%d %b %Y') }}', {{ duration }})">
+                                        style="left: {{ left_pct }}%; width: {{ width_pct }}%; min-width: 20px"
+                                        onclick="showPhaseDetails('{{ phase.phase_name }}', '{{ phase.planned_start.strftime('%d %b %Y') }}', '{{ phase.planned_end.strftime('%d %b %Y') }}', {{ duration }})">
                                         <div class="flex items-center h-full px-2">
                                             <span class="text-xs font-semibold text-white truncate">
                                                 {{ phase.phase_name }}
@@ -256,17 +325,23 @@
                                             {% endif %}
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Start Milestone -->
-                                    <div class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2" style="left: {{ left_pct }}%">
-                                        <div class="w-0 h-0 border-l-4 border-r-4 border-b-6 border-l-transparent border-r-transparent 
-                                                  {% if phase.is_recovery_mode %}border-b-red-600{% else %}border-b-green-600{% endif %}"></div>
+                                    <div class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2"
+                                        style="left: {{ left_pct }}%">
+                                        <div
+                                            class="w-0 h-0 border-l-4 border-r-4 border-b-6 border-l-transparent border-r-transparent 
+                                                  {% if phase.is_recovery_mode %}border-b-red-600{% else %}border-b-green-600{% endif %}">
+                                        </div>
                                     </div>
-                                    
+
                                     <!-- End Milestone -->
-                                    <div class="absolute top-1/2 transform -translate-y-1/2 translate-x-1/2" style="left: {{ left_pct + width_pct }}%">
-                                        <div class="w-0 h-0 border-l-4 border-r-4 border-b-6 border-l-transparent border-r-transparent 
-                                                  {% if phase.is_recovery_mode %}border-b-red-600{% else %}border-b-blue-600{% endif %}"></div>
+                                    <div class="absolute top-1/2 transform -translate-y-1/2 translate-x-1/2"
+                                        style="left: {{ left_pct + width_pct }}%">
+                                        <div
+                                            class="w-0 h-0 border-l-4 border-r-4 border-b-6 border-l-transparent border-r-transparent 
+                                                  {% if phase.is_recovery_mode %}border-b-red-600{% else %}border-b-blue-600{% endif %}">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -274,11 +349,12 @@
                         {% endif %}
                         {% endfor %}
                     </div>
-                    
+
                     <!-- Dynamic TODAY Marker - Full Height -->
-                    <div id="todayMarker" class="absolute top-0 bg-green-500 opacity-80 z-30" 
-                         style="width: 2px; height: 100%; display: none;">
-                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded font-bold whitespace-nowrap">
+                    <div id="todayMarker" class="absolute top-0 bg-green-500 opacity-80 z-30"
+                        style="width: 2px; height: 100%; display: none;">
+                        <div
+                            class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded font-bold whitespace-nowrap">
                             TODAY
                         </div>
                     </div>
@@ -295,13 +371,15 @@
                                 <div class="text-center p-2 bg-white rounded border">Week {{ week_num }}</div>
                                 {% endfor %}
                             </div>
-                            
+
                             <!-- Phase Weekly Distribution -->
                             {% for phase in phases %}
                             {% if phase.planned_start and phase.planned_end %}
-                            {% set phase_duration_weeks = ((phase.planned_end - phase.planned_start).days / 7)|round(0, 'ceil')|int %}
-                            {% set start_week = ((phase.planned_start - timeline_start).days / 7)|round(0, 'floor')|int + 1 %}
-                            
+                            {% set phase_duration_weeks = ((phase.planned_end - phase.planned_start).days / 7)|round(0,
+                            'ceil')|int %}
+                            {% set start_week = ((phase.planned_start - timeline_start).days / 7)|round(0, 'floor')|int
+                            + 1 %}
+
                             <div class="mb-4">
                                 <div class="text-sm font-bold text-slate-700 mb-2">{{ phase.phase_name }}</div>
                                 <div class="grid grid-cols-12 gap-2">
@@ -313,295 +391,296 @@
                                                   bg-slate-100 text-slate-400
                                               {% endif %}">
                                         {% if week_num >= start_week and week_num < start_week + phase_duration_weeks %}
-                                            W{{ week_num - start_week + 1 }}
-                                        {% else %}
-                                            —
-                                        {% endif %}
+                                            W{{ week_num - start_week + 1 }} {% else %} — {% endif %} </div>
+                                            {% endfor %}
                                     </div>
-                                    {% endfor %}
+                                    <div class="text-xs text-slate-500 mt-1 pl-2">
+                                        Duration: {{ phase_duration_weeks }} weeks •
+                                        Start: Week {{ start_week }} •
+                                        Dates: {{ phase.planned_start.strftime('%d %b') }} - {{
+                                        phase.planned_end.strftime('%d %b') }}
+                                    </div>
                                 </div>
-                                <div class="text-xs text-slate-500 mt-1 pl-2">
-                                    Duration: {{ phase_duration_weeks }} weeks • 
-                                    Start: Week {{ start_week }} • 
-                                    Dates: {{ phase.planned_start.strftime('%d %b') }} - {{ phase.planned_end.strftime('%d %b') }}
-                                </div>
-                            </div>
-                            {% endif %}
-                            {% endfor %}
+                                {% endif %}
+                                {% endfor %}
 
-                            <!-- Weekly Statistics -->
-                            <div class="mt-6 bg-white rounded-lg p-4 border border-slate-200">
-                                <h5 class="font-bold text-slate-700 mb-3">📈 Weekly Statistics</h5>
-                                <div class="grid grid-cols-12 gap-2">
-                                    {% for week_num in range(1, 13) %}
-                                    <div class="text-center p-2 rounded bg-green-100 text-green-800 border border-green-200">
-                                        <div class="text-xs font-bold">{{ loop.index }}</div>
-                                        <div class="text-xs">week</div>
+                                <!-- Weekly Statistics -->
+                                <div class="mt-6 bg-white rounded-lg p-4 border border-slate-200">
+                                    <h5 class="font-bold text-slate-700 mb-3">📈 Weekly Statistics</h5>
+                                    <div class="grid grid-cols-12 gap-2">
+                                        {% for week_num in range(1, 13) %}
+                                        <div
+                                            class="text-center p-2 rounded bg-green-100 text-green-800 border border-green-200">
+                                            <div class="text-xs font-bold">{{ loop.index }}</div>
+                                            <div class="text-xs">week</div>
+                                        </div>
+                                        {% endfor %}
                                     </div>
-                                    {% endfor %}
-                                </div>
-                                <div class="text-xs text-slate-500 mt-2">
-                                    <span class="text-green-700">■ Low Load (1 phase)</span> • 
-                                    <span class="text-yellow-700">■ Medium Load (2 phases)</span> • 
-                                    <span class="text-red-700">■ High Load (3+ phases)</span>
+                                    <div class="text-xs text-slate-500 mt-2">
+                                        <span class="text-green-700">■ Low Load (1 phase)</span> •
+                                        <span class="text-yellow-700">■ Medium Load (2 phases)</span> •
+                                        <span class="text-red-700">■ High Load (3+ phases)</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            {% else %}
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center mb-8">
-                    <div class="text-4xl mb-3">📅</div>
-                    <p class="text-slate-600 mb-4">No phases defined for this project yet</p>
-                    <a href="/phases?project_id={{ project.id }}"
-                        class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
-                        + Create First Phase
-                    </a>
-                </div>
-            {% endif %}
-
-            <!-- Project Metadata -->
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
-                <h3 class="font-bold text-slate-800 mb-4">Project Information</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="border-l-4 border-green-500 pl-4">
-                        <p class="text-xs text-slate-500 uppercase font-bold">Progress</p>
-                        <p class="text-lg font-bold text-slate-800">{{ overall_progress|round(1) }}%</p>
-                    </div>
-                    <div class="border-l-4 border-blue-500 pl-4">
-                        <p class="text-xs text-slate-500 uppercase font-bold">Created</p>
-                        <p class="text-lg font-bold text-slate-800">{{ 
-                            project.created_at.strftime('%Y-%m-%d') }}</p>
-                    </div>
-                    <div class="border-l-4 border-purple-500 pl-4">
-                        <p class="text-xs text-slate-500 uppercase font-bold">Snapshots</p>
-                        <p class="text-lg font-bold text-slate-800">{{ snapshots|length }} weeks</p>
-                    </div>
-                    <div class="border-l-4 border-orange-500 pl-4">
-                        <p class="text-xs text-slate-500 uppercase font-bold">Project ID</p>
-                        <p class="text-sm font-bold text-slate-800">#{{ project.id }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tasks Management -->
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h3 class="font-bold text-slate-800">Project Tasks</h3>
-                    <div class="flex gap-3">
-                        <button onclick="showImportModal()"
-                            class="text-sm text-green-600 hover:text-green-800 font-medium">
-                            Import CSV ↑
-                        </button>
-                        <a href="/projects/{{ project.id }}/export-csv"
-                            class="text-sm text-purple-600 hover:text-purple-800 font-medium">
-                            Export CSV ↓
-                        </a>
-                        <a href="/tasks/create?project_id={{ project.id }}"
-                            class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                            + Add Task
-                        </a>
-                    </div>
-                </div>
-                {% if tasks %}
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
-                            <tr>
-                                <th class="px-6 py-3">Task ID</th>
-                                <th class="px-6 py-3">Task</th>
-                                <th class="px-6 py-3">Type</th>
-                                <th class="px-6 py-3">Weight</th>
-                                <th class="px-6 py-3">Start</th>
-                                <th class="px-6 py-3">End</th>
-                                <th class="px-6 py-3">Phase</th>
-                                <th class="px-6 py-3">Resource</th>
-                                <th class="px-6 py-3">Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            {% for task in tasks %}
-                            <tr class="hover:bg-slate-50 transition">
-                                <td class="px-6 py-4">
-                                    <span class="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">
-                                        {{ task.task_id or 'GEN' + '%03d'|format(task.id) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 font-medium text-slate-900">{{ task.task_name }}</td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-bold">
-                                        {{ task.task_type }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ task.weight_score }}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">
-                                    {{ task.planned_start.strftime('%m/%d') if task.planned_start else '-' }}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">
-                                    {{ task.planned_end.strftime('%m/%d') if task.planned_end else '-' }}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">
-                                    {% if task.phase %}
-                                    <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                                        {{ task.phase.phase_name }}
-                                    </span>
-                                    {% else %}
-                                    <span class="text-slate-400 text-xs">No Phase</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">
-                                    {% if task.assigned_resource_id %}
-                                    <span class="text-blue-600 font-semibold">
-                                        Resource #{{ task.assigned_resource_id }}
-                                    </span>
-                                    {% else %}
-                                    <span class="text-xs text-slate-400">Unassigned</span>
-                                    {% endif %}
-                                </td>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-2">
-                                <div class="flex-1 bg-slate-100 rounded-full h-2 w-24">
-                                    <div class="{% if task.actual_progress == 100 %}bg-green-500{% elif task.actual_progress >= 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %} h-2 rounded-full"
-                                        style="width: {{ task.actual_progress }}%"></div>
-                                </div>
-                                <a href="/tasks/{{ task.id }}/edit"
-                                    class="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-semibold transition">
-                                    Edit
-                                </a>
-                        </td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                        </table>
-                    </div>
                     {% else %}
-                    <div class="p-12 text-center">
-                        <div class="text-4xl mb-3">📋</div>
-                        <p class="text-slate-600 mb-4">No tasks in this project yet</p>
-                        <a href="/tasks/create?project_id={{ project.id }}"
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center mb-8">
+                        <div class="text-4xl mb-3">📅</div>
+                        <p class="text-slate-600 mb-4">No phases defined for this project yet</p>
+                        <a href="/phases?project_id={{ project.id }}"
                             class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
-                            + Add First Task
+                            + Create First Phase
                         </a>
                     </div>
                     {% endif %}
-                </div>
 
-                <!-- Weekly Snapshots -->
-                {% if snapshots %}
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-8">
-                    <h3 class="font-bold text-slate-800 mb-4">Weekly Snapshots (PB Curve Data)</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-sm">
-                            <thead class="bg-slate-50">
-                                <tr>
-                                    <th class="px-4 py-2 font-bold text-slate-700">Week</th>
-                                    <th class="px-4 py-2 font-bold text-slate-700">Plan %</th>
-                                    <th class="px-4 py-2 font-bold text-slate-700">Actual %</th>
-                                    <th class="px-4 py-2 font-bold text-slate-700">Variance</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {% for snapshot in snapshots %}
-                                <tr class="hover:bg-slate-50">
-                                    <td class="px-4 py-2 font-semibold text-slate-800">Week {{
-                                        snapshot.week_number }}</td>
-                                    <td class="px-4 py-2 text-slate-800">{{ snapshot.plan_acc|round(1) }}%</td>
-                                    <td class="px-4 py-2 text-slate-800">{{ snapshot.actual_acc|round(1) }}%
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        {% set variance = snapshot.actual_acc - snapshot.plan_acc %}
-                                        <span
-                                            class="{% if variance >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-bold">
-                                            {{ variance|round(1) }}%
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <!-- Project Metadata -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+                        <h3 class="font-bold text-slate-800 mb-4">Project Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div class="border-l-4 border-green-500 pl-4">
+                                <p class="text-xs text-slate-500 uppercase font-bold">Progress</p>
+                                <p class="text-lg font-bold text-slate-800">{{ overall_progress|round(1) }}%</p>
+                            </div>
+                            <div class="border-l-4 border-blue-500 pl-4">
+                                <p class="text-xs text-slate-500 uppercase font-bold">Created</p>
+                                <p class="text-lg font-bold text-slate-800">{{
+                                    project.created_at.strftime('%Y-%m-%d') }}</p>
+                            </div>
+                            <div class="border-l-4 border-purple-500 pl-4">
+                                <p class="text-xs text-slate-500 uppercase font-bold">Snapshots</p>
+                                <p class="text-lg font-bold text-slate-800">{{ snapshots|length }} weeks</p>
+                            </div>
+                            <div class="border-l-4 border-orange-500 pl-4">
+                                <p class="text-xs text-slate-500 uppercase font-bold">Project ID</p>
+                                <p class="text-sm font-bold text-slate-800">#{{ project.id }}</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                {% endif %}
 
-                <!-- Issues Management -->
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-8">
-                    <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-800">Project Issues</h3>
-                        <a href="/issues?project_id={{ project.id }}"
-                            class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                            Manage Issues →
-                        </a>
+                    <!-- Tasks Management -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+                        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800">Project Tasks</h3>
+                            <div class="flex gap-3">
+                                <button onclick="showImportModal()"
+                                    class="text-sm text-green-600 hover:text-green-800 font-medium">
+                                    Import CSV ↑
+                                </button>
+                                <a href="/projects/{{ project.id }}/export-csv"
+                                    class="text-sm text-purple-600 hover:text-purple-800 font-medium">
+                                    Export CSV ↓
+                                </a>
+                                <a href="/tasks/create?project_id={{ project.id }}"
+                                    class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                    + Add Task
+                                </a>
+                            </div>
+                        </div>
+                        {% if tasks %}
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                                    <tr>
+                                        <th class="px-6 py-3">Task ID</th>
+                                        <th class="px-6 py-3">Task</th>
+                                        <th class="px-6 py-3">Type</th>
+                                        <th class="px-6 py-3">Weight</th>
+                                        <th class="px-6 py-3">Start</th>
+                                        <th class="px-6 py-3">End</th>
+                                        <th class="px-6 py-3">Phase</th>
+                                        <th class="px-6 py-3">Resource</th>
+                                        <th class="px-6 py-3">Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {% for task in tasks %}
+                                    <tr class="hover:bg-slate-50 transition">
+                                        <td class="px-6 py-4">
+                                            <span
+                                                class="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">
+                                                {{ task.task_id or 'GEN' + '%03d'|format(task.id) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 font-medium text-slate-900">{{ task.task_name }}</td>
+                                        <td class="px-6 py-4">
+                                            <span
+                                                class="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-bold">
+                                                {{ task.task_type }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">{{ task.weight_score }}</td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            {{ task.planned_start.strftime('%m/%d') if task.planned_start else '-' }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            {{ task.planned_end.strftime('%m/%d') if task.planned_end else '-' }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            {% if task.phase %}
+                                            <span
+                                                class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                                                {{ task.phase.phase_name }}
+                                            </span>
+                                            {% else %}
+                                            <span class="text-slate-400 text-xs">No Phase</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            {% if task.assigned_resource_id %}
+                                            <span class="text-blue-600 font-semibold">
+                                                Resource #{{ task.assigned_resource_id }}
+                                            </span>
+                                            {% else %}
+                                            <span class="text-xs text-slate-400">Unassigned</span>
+                                            {% endif %}
+                                        </td>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center gap-2">
+                                                <div class="flex-1 bg-slate-100 rounded-full h-2 w-24">
+                                                    <div class="{% if task.actual_progress == 100 %}bg-green-500{% elif task.actual_progress >= 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %} h-2 rounded-full"
+                                                        style="width: {{ task.actual_progress }}%"></div>
+                                                </div>
+                                                <a href="/tasks/{{ task.id }}/edit"
+                                                    class="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-semibold transition">
+                                                    Edit
+                                                </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="p-12 text-center">
+                            <div class="text-4xl mb-3">📋</div>
+                            <p class="text-slate-600 mb-4">No tasks in this project yet</p>
+                            <a href="/tasks/create?project_id={{ project.id }}"
+                                class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                                + Add First Task
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% if issues %}
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
-                                <tr>
-                                    <th class="px-6 py-3">Status</th>
-                                    <th class="px-6 py-3">Priority</th>
-                                    <th class="px-6 py-3">Description</th>
-                                    <th class="px-6 py-3">Owner</th>
-                                    <th class="px-6 py-3">Due Date</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {% for issue in issues %}
-                                <tr class="hover:bg-slate-50 transition">
-                                    <td class="px-6 py-4">
-                                        <span class="px-2 py-1 rounded text-xs font-bold
+
+                    <!-- Weekly Snapshots -->
+                    {% if snapshots %}
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-8">
+                        <h3 class="font-bold text-slate-800 mb-4">Weekly Snapshots (PB Curve Data)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-2 font-bold text-slate-700">Week</th>
+                                        <th class="px-4 py-2 font-bold text-slate-700">Plan %</th>
+                                        <th class="px-4 py-2 font-bold text-slate-700">Actual %</th>
+                                        <th class="px-4 py-2 font-bold text-slate-700">Variance</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {% for snapshot in snapshots %}
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="px-4 py-2 font-semibold text-slate-800">Week {{
+                                            snapshot.week_number }}</td>
+                                        <td class="px-4 py-2 text-slate-800">{{ snapshot.plan_acc|round(1) }}%</td>
+                                        <td class="px-4 py-2 text-slate-800">{{ snapshot.actual_acc|round(1) }}%
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            {% set variance = snapshot.actual_acc - snapshot.plan_acc %}
+                                            <span
+                                                class="{% if variance >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-bold">
+                                                {{ variance|round(1) }}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Issues Management -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-8">
+                        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800">Project Issues</h3>
+                            <a href="/issues?project_id={{ project.id }}"
+                                class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                Manage Issues →
+                            </a>
+                        </div>
+                        {% if issues %}
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                                    <tr>
+                                        <th class="px-6 py-3">Status</th>
+                                        <th class="px-6 py-3">Priority</th>
+                                        <th class="px-6 py-3">Description</th>
+                                        <th class="px-6 py-3">Owner</th>
+                                        <th class="px-6 py-3">Due Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {% for issue in issues %}
+                                    <tr class="hover:bg-slate-50 transition">
+                                        <td class="px-6 py-4">
+                                            <span class="px-2 py-1 rounded text-xs font-bold
                                         {% if issue.status == 'Open' %}bg-red-100 text-red-700
                                         {% elif issue.status == 'In Progress' %}bg-yellow-100 text-yellow-700
                                         {% else %}bg-green-100 text-green-700{% endif %}">
-                                            {{ issue.status }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <span class="px-2 py-1 rounded text-xs font-bold
+                                                {{ issue.status }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2 py-1 rounded text-xs font-bold
                                         {% if issue.priority == 'High' %}bg-red-50 text-red-600
                                         {% elif issue.priority == 'Medium' %}bg-orange-50 text-orange-600
                                         {% else %}bg-slate-100 text-slate-600{% endif %}">
-                                            {{ issue.priority }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-slate-700 max-w-xs truncate">
-                                        {{ issue.issue_description }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-slate-600">
-                                        {% if issue.pic_resource_id %}Resource #{{ issue.pic_resource_id }}{%
-                                        else %}-{%
-                                        endif %}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-slate-600">
-                                        {{ issue.due_date.strftime('%Y/%m/%d') if issue.due_date else '-' }}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                                {{ issue.priority }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-700 max-w-xs truncate">
+                                            {{ issue.issue_description }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            {% if issue.pic_resource_id %}Resource #{{ issue.pic_resource_id }}{%
+                                            else %}-{%
+                                            endif %}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            {{ issue.due_date.strftime('%Y/%m/%d') if issue.due_date else '-' }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="p-8 text-center">
+                            <p class="text-slate-500 mb-4">No issues reported for this project</p>
+                            <a href="/issues/create?project_id={{ project.id }}"
+                                class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition">
+                                + Report Issue
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% else %}
-                    <div class="p-8 text-center">
-                        <p class="text-slate-500 mb-4">No issues reported for this project</p>
-                        <a href="/issues/create?project_id={{ project.id }}"
-                            class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition">
-                            + Report Issue
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
 
-                <!-- Quick Actions -->
-                <div class="mt-8 flex gap-3">
-                    <button onclick="window.location.href='/daily-tracking?project_id={{ project.id }}'"
-                        class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition">
-                        Go to Daily Tracking
-                    </button>
-                    <button onclick="takeSnapshot()"
-                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition">
-                        Take Weekly Snapshot
-                    </button>
-                </div>
+                    <!-- Quick Actions -->
+                    <div class="mt-8 flex gap-3">
+                        <button onclick="window.location.href='/daily-tracking?project_id={{ project.id }}'"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition">
+                            Go to Daily Tracking
+                        </button>
+                        <button onclick="takeSnapshot()"
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition">
+                            Take Weekly Snapshot
+                        </button>
+                    </div>
         </main>
     </div>
 
@@ -734,7 +813,7 @@
         function toggleWeeklyView() {
             const weeklyTimeline = document.getElementById('weeklyTimeline');
             const toggleButton = document.getElementById('weeklyToggle');
-            
+
             if (weeklyTimeline.classList.contains('hidden')) {
                 weeklyTimeline.classList.remove('hidden');
                 weeklyTimeline.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -805,9 +884,9 @@
                 <div class="bg-slate-50 rounded-lg p-4">
                     <h6 class="font-bold text-slate-700 mb-2">📊 Weekly Breakdown</h6>
                     <div class="grid grid-cols-7 gap-1 text-xs">
-                        ${Array.from({length: weekDuration}, (_, i) => 
-                            `<div class="text-center p-1 bg-blue-100 text-blue-800 rounded border">W${i+1}</div>`
-                        ).join('')}
+                        ${Array.from({ length: weekDuration }, (_, i) =>
+                `<div class="text-center p-1 bg-blue-100 text-blue-800 rounded border">W${i + 1}</div>`
+            ).join('')}
                     </div>
                     <div class="text-xs text-slate-500 mt-2">
                         This phase spans ${weekDuration} week${weekDuration > 1 ? 's' : ''} of project timeline
@@ -830,7 +909,7 @@
         }
 
         // Close modal when clicking outside
-        document.addEventListener('click', function(event) {
+        document.addEventListener('click', function (event) {
             const modal = document.getElementById('phaseDetailsModal');
             if (modal && event.target === modal) {
                 closePhaseDetails();

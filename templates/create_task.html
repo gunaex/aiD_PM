@@ -36,8 +36,8 @@
                     class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Projects</a>
                 <a href="/kanban"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
-                <a href="/gantt"
-                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/tracking"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Tracking</a>
                 <a href="/calendar-grid"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
 
@@ -46,6 +46,8 @@
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
                     Center</a><a href="/phases"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/functions"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Functions/Req</a>
                 <a href="/issues"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
             </nav>
@@ -88,7 +90,26 @@
                             <input type="text" id="task_name" name="task_name" placeholder="e.g., Develop API Endpoints"
                                 class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 required>
-                            <p class="text-xs text-slate-500 mt-1">Clear, specific task description</p>
+                            <p class="text-xs text-slate-500 mt-1">Task importance/complexity</p>
+                        </div>
+
+                        <!-- Effort Tracking -->
+                        <div class="grid grid-cols-2 gap-4 border-t border-slate-100 pt-6">
+                            <div>
+                                <label for="estimated_hours" class="block text-sm font-bold text-slate-700 mb-2">
+                                    Estimated Hours
+                                </label>
+                                <input type="number" id="estimated_hours" name="estimated_hours" min="0" step="0.5"
+                                    value="0"
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label for="actual_hours" class="block text-sm font-bold text-slate-700 mb-2">
+                                    Actual Hours
+                                </label>
+                                <input type="number" id="actual_hours" name="actual_hours" min="0" step="0.5" value="0"
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
                         </div>
 
                         <!-- Task Type -->
@@ -114,32 +135,58 @@
                             <label class="block text-sm font-bold text-slate-700 mb-2">
                                 Assign Team Members (Searchable & Multiple) ⭐
                             </label>
-                            
+
                             <!-- Search Input -->
                             <div class="relative mb-2">
-                                <input type="text" id="resourceSearch" 
-                                    placeholder="Search by name, position, skills..."
+                                <input type="text" id="resourceSearch" placeholder="Search by name, position, skills..."
                                     class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                                 <div class="absolute right-3 top-3 text-slate-400">
                                     🔍
                                 </div>
                             </div>
-                            
+
                             <!-- Selected Resources Display -->
                             <div id="selectedResources" class="mb-3 flex flex-wrap gap-2">
                                 <div class="text-sm text-slate-500 p-2">No resources selected</div>
                             </div>
-                            
+
                             <!-- Search Results -->
-                            <div id="resourceResults" 
+                            <div id="resourceResults"
                                 class="border border-slate-300 rounded-lg bg-white max-h-64 overflow-y-auto hidden">
                                 <!-- Results will be populated here -->
                             </div>
-                            
+
                             <!-- Hidden inputs for form submission -->
                             <div id="resourceInputs"></div>
-                            
-                            <p class="text-xs text-slate-500 mt-1">✅ Search and select multiple team members for this task</p>
+
+                            <p class="text-xs text-slate-500 mt-1">✅ Search and select multiple team members for this
+                                task</p>
+                        </div>
+
+                        <!-- Function/Requirement Assignment (Optional) -->
+                        <div>
+                            <label for="function_id" class="block text-sm font-bold text-slate-700 mb-2">
+                                Function / Requirement (Optional)
+                            </label>
+                            <select id="function_id" name="function_id"
+                                class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                onchange="handleFunctionChange(this.value)">
+                                <option value="">-- No Function --</option>
+                                {% for func in functions %}
+                                <option value="{{ func.id }}">{{ func.function_code }}: {{ func.function_name }}
+                                </option>
+                                {% endfor %}
+                                <option value="custom">✏️ Enter Custom Function</option>
+                            </select>
+
+                            <div id="custom_function_group" class="mt-3 hidden">
+                                <label for="function_text" class="block text-xs font-bold text-slate-500 mb-1">
+                                    Custom Function Name
+                                </label>
+                                <input type="text" id="function_text" name="function_text"
+                                    placeholder="Enter custom function or requirement name"
+                                    class="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
                         </div>
 
                         <!-- Phase Assignment (Optional) -->
@@ -211,6 +258,17 @@
     </div>
 
     <script>
+        function handleFunctionChange(value) {
+            const customGroup = document.getElementById('custom_function_group');
+            if (value === 'custom') {
+                customGroup.classList.remove('hidden');
+                document.getElementById('function_text').focus();
+            } else {
+                customGroup.classList.add('hidden');
+                document.getElementById('function_text').value = '';
+            }
+        }
+
         function handleTaskTypeChange(value) {
             const customInput = document.getElementById('custom_task_type');
             const taskTypeSelect = document.getElementById('task_type');
@@ -265,19 +323,19 @@
                 console.error('Error fetching recommendation:', error);
             }
         }
-        
+
         // Resource search and selection functionality
         let selectedResources = [];
         let allResources = [];
-        
-        document.addEventListener('DOMContentLoaded', async function() {
+
+        document.addEventListener('DOMContentLoaded', async function () {
             // Load all resources first
             await loadAllResources();
-            
+
             // Setup search functionality
             setupResourceSearch();
         });
-        
+
         async function loadAllResources() {
             try {
                 const response = await fetch('/api/find-resources');
@@ -287,41 +345,41 @@
                 allResources = [];
             }
         }
-        
+
         function setupResourceSearch() {
             const searchInput = document.getElementById('resourceSearch');
             const resultsDiv = document.getElementById('resourceResults');
-            
+
             let searchTimeout;
-            
-            searchInput.addEventListener('input', function() {
+
+            searchInput.addEventListener('input', function () {
                 clearTimeout(searchTimeout);
                 const query = this.value.trim();
-                
+
                 if (query.length === 0) {
                     resultsDiv.classList.add('hidden');
                     return;
                 }
-                
+
                 searchTimeout = setTimeout(() => {
                     searchResources(query);
                 }, 300);
             });
-            
-            searchInput.addEventListener('focus', function() {
+
+            searchInput.addEventListener('focus', function () {
                 if (this.value.trim()) {
                     searchResources(this.value.trim());
                 }
             });
-            
+
             // Hide results when clicking outside
-            document.addEventListener('click', function(e) {
+            document.addEventListener('click', function (e) {
                 if (!e.target.closest('#resourceSearch') && !e.target.closest('#resourceResults')) {
                     resultsDiv.classList.add('hidden');
                 }
             });
         }
-        
+
         async function searchResources(query) {
             try {
                 const response = await fetch(`/api/find-resources?q=${encodeURIComponent(query)}`);
@@ -331,10 +389,10 @@
                 console.error('Error searching resources:', error);
             }
         }
-        
+
         function displayResourceResults(results) {
             const resultsDiv = document.getElementById('resourceResults');
-            
+
             if (results.length === 0) {
                 resultsDiv.innerHTML = '<div class="p-3 text-slate-500 text-sm">No resources found</div>';
             } else {
@@ -357,16 +415,16 @@
                     `;
                 }).join('');
             }
-            
+
             resultsDiv.classList.remove('hidden');
         }
-        
+
         function toggleResource(resourceId) {
             const resource = allResources.find(r => r.id === resourceId);
             if (!resource) return;
-            
+
             const existingIndex = selectedResources.findIndex(r => r.id === resourceId);
-            
+
             if (existingIndex >= 0) {
                 // Remove resource
                 selectedResources.splice(existingIndex, 1);
@@ -374,43 +432,43 @@
                 // Add resource
                 addSelectedResource(resource);
             }
-            
+
             updateSelectedResourcesDisplay();
             updateResourceInputs();
-            
+
             // Refresh search results to update selection status
             const searchInput = document.getElementById('resourceSearch');
             if (searchInput.value.trim()) {
                 searchResources(searchInput.value.trim());
             }
         }
-        
+
         function addSelectedResource(resource) {
             if (!selectedResources.some(r => r.id === resource.id)) {
                 selectedResources.push(resource);
             }
         }
-        
+
         function removeSelectedResource(resourceId) {
             selectedResources = selectedResources.filter(r => r.id !== resourceId);
             updateSelectedResourcesDisplay();
             updateResourceInputs();
-            
+
             // Refresh search results if visible
             const searchInput = document.getElementById('resourceSearch');
             if (searchInput.value.trim()) {
                 searchResources(searchInput.value.trim());
             }
         }
-        
+
         function updateSelectedResourcesDisplay() {
             const selectedDiv = document.getElementById('selectedResources');
-            
+
             if (selectedResources.length === 0) {
                 selectedDiv.innerHTML = '<div class="text-sm text-slate-500 p-2">No resources selected</div>';
                 return;
             }
-            
+
             selectedDiv.innerHTML = selectedResources.map(resource => `
                 <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                     <span>${resource.full_name} (${resource.nickname})</span>
@@ -421,10 +479,10 @@
                 </div>
             `).join('');
         }
-        
+
         function updateResourceInputs() {
             const inputsDiv = document.getElementById('resourceInputs');
-            inputsDiv.innerHTML = selectedResources.map(resource => 
+            inputsDiv.innerHTML = selectedResources.map(resource =>
                 `<input type="hidden" name="resource_ids" value="${resource.id}">`
             ).join('');
         }

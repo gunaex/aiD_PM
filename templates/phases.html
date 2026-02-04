@@ -36,8 +36,8 @@
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
                 <a href="/kanban"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
-                <a href="/gantt"
-                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Gantt</a>
+                <a href="/tracking"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Tracking</a>
                 <a href="/calendar-grid"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
 
@@ -46,6 +46,8 @@
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
                     Center</a><a href="/phases"
                     class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/functions"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Functions/Req</a>
                 <a href="/issues"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
             </nav>
@@ -189,12 +191,15 @@
                             {% for phase in phases %}
                             <tr class="hover:bg-slate-50 transition">
                                 <td class="px-6 py-4 text-center font-mono text-sm">{{ phase.phase_order }}</td>
-                                <td class="px-6 py-4">
-                                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg font-bold text-sm">
+                                <td class="px-6 py-4" id="phase-name-{{ phase.id }}"
+                                    ondblclick="editPhaseField({{ phase.id }}, 'phase_name', '{{ phase.phase_name }}')"
+                                    title="Double-click to edit">
+                                    <span
+                                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg font-bold text-sm cursor-pointer hover:bg-blue-200">
                                         {{ phase.phase_name }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">Project #{{ phase.project_id }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600">{{ phase.project.name }}</td>
                                 <td class="px-6 py-4">
                                     <span class="px-2 py-1 rounded text-xs font-bold
                                                  {% if phase.status == 'completed' %}bg-green-100 text-green-700
@@ -207,6 +212,28 @@
                                     <button onclick="toggleRecovery({{ phase.id }})"
                                         class="px-2 py-1 rounded text-xs font-bold transition
                                             {% if phase.is_recovery_mode %}bg-red-600 text-white hover:bg-red-700{% else %}bg-slate-200 text-slate-600 hover:bg-slate-300{% endif %}">
+                                        {% if phase.is_recovery_mode %}⚠️ ON{% else %}OFF{% endif %}
+                                    </button>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-slate-600" id="phase-dates-{{ phase.id }}"
+                                    ondblclick="editPhaseDates({{ phase.id }}, '{{ phase.planned_start.strftime('%Y-%m-%d') if phase.planned_start else '' }}', '{{ phase.planned_end.strftime('%Y-%m-%d') if phase.planned_end else '' }}')"
+                                    title="Double-click to edit">
+                                    <span class="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded">
+                                        {% if phase.planned_start and phase.planned_end %}
+                                        {{ phase.planned_start.strftime('%Y-%m-%d') }} → {{
+                                        phase.planned_end.strftime('%Y-%m-%d') }}
+                                        {% elif phase.planned_start %}
+                                        From {{ phase.planned_start.strftime('%Y-%m-%d') }}
+                                        {% elif phase.planned_end %}
+                                        Until {{ phase.planned_end.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                        <span class="text-slate-400">Not set</span>
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
+                                    {{ phase.description or '-' }}
+                                </td>
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     <a href="/issues?phase_id={{ phase.id }}"
@@ -275,6 +302,147 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error updating phase');
+            }
+        }
+
+
+        // Store original HTML for cancel functionality
+        const originalCellHTML = {};
+
+        // Edit Phase Field (for phase name)
+        function editPhaseField(phaseId, fieldName, currentValue) {
+            const cellId = `phase-${fieldName.replace('_', '-')}-${phaseId}`;
+            const cell = document.getElementById(cellId);
+
+            // Store original HTML
+            originalCellHTML[cellId] = cell.innerHTML;
+
+            cell.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <input type="text" id="edit-${fieldName}-${phaseId}" value="${currentValue}"
+                        class="border border-blue-500 rounded px-2 py-1 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="savePhaseField(${phaseId}, '${fieldName}', '${currentValue.replace(/'/g, "\\'")}')"
+                        class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-bold">
+                        ✓
+                    </button>
+                    <button onclick="cancelPhaseEdit('${cellId}')"
+                        class="bg-slate-400 hover:bg-slate-500 text-white px-2 py-1 rounded text-xs font-bold">
+                        ✕
+                    </button>
+                </div>
+            `;
+
+            document.getElementById(`edit-${fieldName}-${phaseId}`).focus();
+            document.getElementById(`edit-${fieldName}-${phaseId}`).select();
+        }
+
+
+        // Edit Phase Dates
+        function editPhaseDates(phaseId, currentStart, currentEnd) {
+            const cellId = `phase-dates-${phaseId}`;
+            const cell = document.getElementById(cellId);
+
+            // Store original HTML
+            originalCellHTML[cellId] = cell.innerHTML;
+
+            cell.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <input type="date" id="edit-start-${phaseId}" value="${currentStart}"
+                        class="border border-blue-500 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span class="text-slate-400">→</span>
+                    <input type="date" id="edit-end-${phaseId}" value="${currentEnd}"
+                        class="border border-blue-500 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="savePhaseDates(${phaseId}, '${currentStart}', '${currentEnd}')"
+                        class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-bold">
+                        ✓
+                    </button>
+                    <button onclick="cancelPhaseEdit('${cellId}')"
+                        class="bg-slate-400 hover:bg-slate-500 text-white px-2 py-1 rounded text-xs font-bold">
+                        ✕
+                    </button>
+                </div>
+            `;
+
+            document.getElementById(`edit-start-${phaseId}`).focus();
+        }
+
+        // Save Phase Field
+        async function savePhaseField(phaseId, fieldName, originalValue) {
+            const newValue = document.getElementById(`edit-${fieldName}-${phaseId}`).value.trim();
+
+            if (!newValue) {
+                alert('Phase name cannot be empty');
+                return;
+            }
+
+            if (newValue === originalValue) {
+                cancelPhaseEdit(phaseId, fieldName, null);
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append(fieldName, newValue);
+
+                const response = await fetch(`/phases/${phaseId}/update`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to update phase');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating phase');
+            }
+        }
+
+        // Save Phase Dates
+        async function savePhaseDates(phaseId, originalStart, originalEnd) {
+            const newStart = document.getElementById(`edit-start-${phaseId}`).value;
+            const newEnd = document.getElementById(`edit-end-${phaseId}`).value;
+
+            if (newStart && newEnd && newStart > newEnd) {
+                alert('Start date cannot be after end date');
+                return;
+            }
+
+            if (newStart === originalStart && newEnd === originalEnd) {
+                cancelPhaseEdit(phaseId, 'dates', null);
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                if (newStart) formData.append('planned_start', newStart);
+                if (newEnd) formData.append('planned_end', newEnd);
+
+                const response = await fetch(`/phases/${phaseId}/update`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to update phase dates');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating phase dates');
+            }
+        }
+
+
+        // Cancel Edit
+        function cancelPhaseEdit(cellId) {
+            const cell = document.getElementById(cellId);
+            if (cell && originalCellHTML[cellId]) {
+                cell.innerHTML = originalCellHTML[cellId];
+                delete originalCellHTML[cellId];
             }
         }
     </script>

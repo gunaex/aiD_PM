@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Functions & Requirements | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+
+        .function-row:hover .action-btns {
+            opacity: 1;
+        }
+
+        .action-btns {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+            <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/tracking"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Tracking</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a>
+                <a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/functions"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Functions/Req</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Functions & Requirements</h1>
+                    <p class="text-slate-500 text-sm">Manage functional requirements, scope, and implementation progress
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="toggleCreateForm()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition">
+                        + Add Function
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+                <div class="flex items-center gap-4">
+                    <label class="text-sm font-bold text-slate-700">Filter by Project:</label>
+                    <select id="project_filter" onchange="filterFunctions(this.value)"
+                        class="text-slate-900 border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Projects</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Create Form (Hidden by default) -->
+            <div id="createForm" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6 hidden">
+                <h3 class="font-bold text-slate-800 mb-4">Add New Function/Requirement</h3>
+                <form action="/functions/create" method="POST" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Project *</label>
+                            <select name="project_id" required
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Select Project --</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{%
+                                    endif %}>{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Parent Function
+                                (Optional)</label>
+                            <select name="parent_function_id"
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Root Level --</option>
+                                {% for func in functions %}
+                                <option value="{{ func.id }}">{{ func.function_code }}: {{ func.function_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Function Name *</label>
+                            <input type="text" name="function_name" required
+                                placeholder="e.g., User Authentication, Payment Gateway"
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                            <input type="text" name="category" placeholder="e.g., UI, Backend, API"
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Priority</label>
+                            <select name="priority"
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Estimated Effort (Hours)</label>
+                            <input type="number" name="estimated_hours" step="0.5" value="0"
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                        <textarea name="description" rows="2"
+                            class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                            Create Function
+                        </button>
+                        <button type="button" onclick="toggleCreateForm()"
+                            class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium transition">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Functions List -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800">Functions Hierarchy</h3>
+                </div>
+
+                {% if functions %}
+                <div class="p-0">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                            <tr>
+                                <th class="px-6 py-4">Code</th>
+                                <th class="px-6 py-4">Function / Requirement Name</th>
+                                <th class="px-6 py-4">Project</th>
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4">Priority</th>
+                                <th class="px-6 py-4">Effort (Est/Act)</th>
+                                <th class="px-6 py-4">Progress</th>
+                                <th class="px-6 py-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% macro render_function(func, depth=0) %}
+                            <tr class="hover:bg-slate-50 transition function-row">
+                                <td class="px-6 py-4 font-mono text-xs font-bold text-slate-500">
+                                    {{ func.function_code }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div style="padding-left: {{ depth * 1.5 }}rem" class="flex items-center gap-2">
+                                        {% if depth > 0 %}
+                                        <span class="text-slate-300">└─</span>
+                                        {% endif %}
+                                        <div class="group relative">
+                                            <span class="font-bold text-slate-800 block cursor-help"
+                                                title="{{ func.description or 'No description' }}">
+                                                {{ func.function_name }}
+                                            </span>
+                                            {% if func.category %}
+                                            <span class="text-[10px] uppercase font-bold text-blue-500">{{ func.category
+                                                }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-xs text-slate-500">{{ func.project.name }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 rounded text-[10px] uppercase font-bold
+                                        {% if func.status == 'completed' %}bg-green-100 text-green-700
+                                        {% elif func.status == 'in_progress' %}bg-yellow-100 text-yellow-700
+                                        {% elif func.status == 'on_hold' %}bg-red-100 text-red-700
+                                        {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                        {{ func.status.replace('_', ' ') }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-xs font-bold
+                                        {% if func.priority == 'high' %}text-red-500
+                                        {% elif func.priority == 'medium' %}text-yellow-600
+                                        {% else %}text-blue-500{% endif %} uppercase">
+                                        {{ func.priority }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-xs">
+                                    <div class="flex flex-col">
+                                        {% set linked_tasks = func.tasks %}
+                                        {% set total_est = linked_tasks|sum(attribute='estimated_hours') %}
+                                        {% set total_act = linked_tasks|sum(attribute='actual_hours') %}
+
+                                        <!-- Override with function-specific effort if tasks are empty -->
+                                        {% if total_est == 0 and func.estimated_hours > 0 %}{% set total_est =
+                                        func.estimated_hours %}{% endif %}
+                                        {% if total_act == 0 and func.actual_hours > 0 %}{% set total_act =
+                                        func.actual_hours %}{% endif %}
+
+                                        <span class="text-slate-700 font-bold">{{ "%.1f"|format(total_est) }}h
+                                            Est.</span>
+                                        <span class="text-slate-400">{{ "%.1f"|format(total_act) }}h Act.</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 w-48">
+                                    <div class="flex flex-col gap-1">
+                                        {% set tasks = func.tasks %}
+                                        {% set total_tasks = tasks|length %}
+
+                                        {% if total_tasks > 0 %}
+                                        {% set total_progress = 0 %}
+                                        {% for t in tasks %}
+                                        {% set total_progress = total_progress + t.actual_progress %}
+                                        {% endfor %}
+                                        {% set avg_progress = (total_progress / total_tasks)|round %}
+                                        {% else %}
+                                        {% set avg_progress = 100 if func.status == 'completed' else 0 %}
+                                        {% endif %}
+
+                                        <div class="flex justify-between text-[10px] font-bold text-slate-500">
+                                            <span>{{ avg_progress }}% Complete</span>
+                                            <span>{{ total_tasks }} Tasks</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="{% if avg_progress == 100 %}bg-green-500{% else %}bg-blue-600{% endif %} h-full transition-all duration-500"
+                                                style="width: {{ avg_progress }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2 action-btns">
+                                        <button onclick="editFunction({{ func.id }})"
+                                            class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                                            title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                        </button>
+                                        <form action="/functions/{{ func.id }}/delete" method="POST"
+                                            onsubmit="return confirm('Delete this function? All sub-functions will also be affected.')">
+                                            <button type="submit"
+                                                class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                                                title="Delete">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% for child in functions if child.parent_function_id == func.id %}
+                            {{ render_function(child, depth + 1) }}
+                            {% endfor %}
+                            {% endmacro %}
+
+                            {% for func in functions if not func.parent_function_id %}
+                            {{ render_function(func) }}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-12 text-center">
+                    <div class="text-5xl mb-4">🧩</div>
+                    <h3 class="text-lg font-bold text-slate-700 mb-2">No Functions Created</h3>
+                    <p class="text-slate-500 mb-6">Start defining your project requirements to track progress
+                        effectively.</p>
+                    <button onclick="toggleCreateForm()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition">
+                        + Define First Requirement
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Modal (Simplified for now) -->
+    <div id="editModal"
+        class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div
+            class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-lg">Edit Requirement</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="editForm" onsubmit="submitEdit(event)" class="space-y-4">
+                    <input type="hidden" name="function_id" id="edit_id">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Function Name</label>
+                        <input type="text" name="function_name" id="edit_name" required
+                            class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Status</label>
+                            <select name="status" id="edit_status"
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2">
+                                <option value="not_started">Not Started</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="on_hold">On Hold</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Priority</label>
+                            <select name="priority" id="edit_priority"
+                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Est. Hours</label>
+                        <input type="number" name="estimated_hours" id="edit_hours" step="0.5"
+                            class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2">
+                    </div>
+                    <div class="flex justify-end gap-3 pt-4">
+                        <button type="button" onclick="closeEditModal()"
+                            class="bg-slate-100 text-slate-600 px-6 py-2 rounded-lg font-medium">Cancel</button>
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium">Save
+                            Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleCreateForm() {
+            const form = document.getElementById('createForm');
+            form.classList.toggle('hidden');
+        }
+
+        function filterFunctions(projectId) {
+            if (projectId) {
+                window.location.href = `/functions?project_id=${projectId}`;
+            } else {
+                window.location.href = '/functions';
+            }
+        }
+
+        async function editFunction(funcId) {
+            // In a real app, fetch from API. For now, we'll find in the list or just use placeholders
+            document.getElementById('edit_id').value = funcId;
+            // Simplified: just show modal. You'd normally populate it.
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        async function submitEdit(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const funcId = formData.get('function_id');
+
+            try {
+                const response = await fetch(`/functions/${funcId}/update`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Error updating function');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+
+</html>

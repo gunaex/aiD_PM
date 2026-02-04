@@ -36,6 +36,7 @@ pm_system.db
 
 # Output files
 output/
+exports/
 *.xls
 *.xlsx
 !templates_excel/*.xls
