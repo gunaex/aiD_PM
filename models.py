@@ -207,3 +207,61 @@ class ProjectNote(Base):
     
     # Relationship
     project = relationship("Project", backref="notes")
+
+class CompanyProfile(Base):
+    """Company profile for Customer or Responder entities - PROJECT SPECIFIC"""
+    __tablename__ = "company_profiles"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)  # NEW: Project-specific
+    profile_type = Column(String, nullable=False)  # "customer" or "responder"
+    company_name = Column(String, nullable=False)
+    address = Column(Text, nullable=True)
+    logo_path = Column(String, nullable=True)  # Path to uploaded logo
+    
+    # Contact Person 1
+    pic1_name = Column(String, nullable=True)
+    pic1_email = Column(String, nullable=True)
+    pic1_tel = Column(String, nullable=True)
+    
+    # Contact Person 2
+    pic2_name = Column(String, nullable=True)
+    pic2_email = Column(String, nullable=True)
+    pic2_tel = Column(String, nullable=True)
+    
+    # Contact Person 3
+    pic3_name = Column(String, nullable=True)
+    pic3_email = Column(String, nullable=True)
+    pic3_tel = Column(String, nullable=True)
+    
+    # Project note (for responder only)
+    project_note = Column(String(255), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    # Relationship
+    project = relationship("Project", backref="company_profiles")
+
+class OnsiteReport(Base):
+    """On-Site / Discussion / Consensus Report"""
+    __tablename__ = "onsite_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    
+    # Selected items
+    selected_task_ids = Column(JSON, nullable=True)  # List of task IDs
+    selected_function_ids = Column(JSON, nullable=True)  # List of function IDs
+    
+    # Description
+    description = Column(Text, nullable=True)  # 3-line free text
+    
+    # Signatures
+    customer_signature_name = Column(String, nullable=True)
+    responder_signature_name = Column(String, nullable=True)
+    
+    # Metadata
+    report_date = Column(Date, default=datetime.date.today)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationship
+    project = relationship("Project", backref="onsite_reports")

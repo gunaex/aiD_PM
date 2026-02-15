@@ -150,7 +150,8 @@ def fromjson_filter(value):
         return {}
 
 templates.env.filters['fromjson'] = fromjson_filter
-# app.mount("/static", StaticFiles(directory="static"), name="static")  # Uncomment เมื่อมีไฟล์ static
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 # ==================== Pydantic Schemas ====================
@@ -2460,6 +2461,325 @@ async def delete_project_note(project_id: int, note_id: int, db: Session = Depen
     db.commit()
     
     return {"success": True, "message": "Note deleted successfully"}
+
+# ==================== Company Profile & Onsite Reports ====================
+
+@app.get("/projects/{project_id}/settings", response_class=HTMLResponse)
+async def project_settings_page(request: Request, project_id: int, db: Session = Depends(get_db)):
+    """Project-specific company settings page"""
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    customer_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "customer"
+    ).first()
+    
+    responder_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "responder"
+    ).first()
+    
+    return templates.TemplateResponse("company_settings.html", {
+        "request": request,
+        "project": project,
+        "customer_profile": customer_profile,
+        "responder_profile": responder_profile
+    })
+
+@app.post("/projects/{project_id}/settings/company-profile")
+async def save_project_company_profile(
+    project_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Create or update project-specific company profiles (both Customer and Responder)"""
+    # Verify project exists
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    form_data = await request.form()
+    print(f"DEBUG: Saving profiles for project {project_id}")
+    print(f"DEBUG: Form keys: {list(form_data.keys())}")
+    
+    # Process both profile types
+    for profile_type in ["customer", "responder"]:
+        print(f"DEBUG: Processing {profile_type} profile")
+        # Find existing profile for this project
+        profile = db.query(models.CompanyProfile).filter(
+            models.CompanyProfile.project_id == project_id,
+            models.CompanyProfile.profile_type == profile_type
+        ).first()
+        
+        # Extract data from form with prefix
+        prefix = f"{profile_type}_"
+        company_name = form_data.get(f"{prefix}company_name")
+        address = form_data.get(f"{prefix}address")
+        pic1_name = form_data.get(f"{prefix}pic1_name")
+        pic1_email = form_data.get(f"{prefix}pic1_email")
+        pic1_tel = form_data.get(f"{prefix}pic1_tel")
+        pic2_name = form_data.get(f"{prefix}pic2_name")
+        pic2_email = form_data.get(f"{prefix}pic2_email")
+        pic2_tel = form_data.get(f"{prefix}pic2_tel")
+        pic3_name = form_data.get(f"{prefix}pic3_name")
+        pic3_email = form_data.get(f"{prefix}pic3_email")
+        pic3_tel = form_data.get(f"{prefix}pic3_tel")
+        project_note = form_data.get(f"{prefix}project_note") if profile_type == "responder" else None
+        
+        # Handle logo upload
+        logo = form_data.get(f"{prefix}logo")
+        logo_path = None
+        
+        # More robust check: check for filename attribute and presence
+        if logo and hasattr(logo, 'filename') and logo.filename:
+            print(f"DEBUG: [{profile_type}] Found logo: {logo.filename}")
+            try:
+                await logo.seek(0)
+                content = await logo.read()
+                print(f"DEBUG: [{profile_type}] Content length: {len(content)} bytes")
+                
+                if len(content) > 0:
+                    os.makedirs("uploads/logos", exist_ok=True)
+                    # Clean filename to avoid path traversal or issues
+                    clean_filename = "".join(c for c in logo.filename if c.isalnum() or c in "._-").strip()
+                    logo_filename = f"project_{project_id}_{profile_type}_{clean_filename}"
+                    logo_path = f"uploads/logos/{logo_filename}"
+                    
+                    # Full path for writing
+                    full_path = os.path.join(os.getcwd(), logo_path)
+                    print(f"DEBUG: [{profile_type}] Saving to: {full_path}")
+                    
+                    with open(full_path, "wb") as f:
+                        f.write(content)
+                    
+                    print(f"DEBUG: [{profile_type}] File exists after save: {os.path.exists(full_path)}")
+                else:
+                    print(f"DEBUG: [{profile_type}] File is empty")
+            except Exception as e:
+                print(f"DEBUG: [{profile_type}] ERROR saving logo: {str(e)}")
+        else:
+            print(f"DEBUG: [{profile_type}] No file uploaded (logo={type(logo)}, filename='{getattr(logo, 'filename', 'N/A')}')")
+        
+        if profile:
+            # Update existing
+            if company_name:
+                profile.company_name = company_name
+            profile.address = address
+            if logo_path:
+                profile.logo_path = logo_path
+            profile.pic1_name = pic1_name
+            profile.pic1_email = pic1_email
+            profile.pic1_tel = pic1_tel
+            profile.pic2_name = pic2_name
+            profile.pic2_email = pic2_email
+            profile.pic2_tel = pic2_tel
+            profile.pic3_name = pic3_name
+            profile.pic3_email = pic3_email
+            profile.pic3_tel = pic3_tel
+            if profile_type == "responder":
+                profile.project_note = project_note
+        else:
+            # Create new
+            profile = models.CompanyProfile(
+                project_id=project_id,
+                profile_type=profile_type,
+                company_name=company_name or ("New Customer" if profile_type == "customer" else "New Responder"),
+                address=address,
+                logo_path=logo_path,
+                pic1_name=pic1_name,
+                pic1_email=pic1_email,
+                pic1_tel=pic1_tel,
+                pic2_name=pic2_name,
+                pic2_email=pic2_email,
+                pic2_tel=pic2_tel,
+                pic3_name=pic3_name,
+                pic3_email=pic3_email,
+                pic3_tel=pic3_tel,
+                project_note=project_note
+            )
+            db.add(profile)
+    
+    db.commit()
+    return RedirectResponse(url=f"/projects/{project_id}/settings", status_code=303)
+
+@app.get("/projects/{project_id}/onsite-report/new", response_class=HTMLResponse)
+async def new_onsite_report(request: Request, project_id: int, db: Session = Depends(get_db)):
+    """Onsite report creation form"""
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    tasks = db.query(models.Task).filter(models.Task.project_id == project_id).all()
+    functions = db.query(models.ProjectFunction).filter(
+        models.ProjectFunction.project_id == project_id
+    ).all()
+    
+    customer_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "customer"
+    ).first()
+    
+    responder_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "responder"
+    ).first()
+    
+    return templates.TemplateResponse("onsite_report_form.html", {
+        "request": request,
+        "project": project,
+        "tasks": tasks,
+        "functions": functions,
+        "customer_profile": customer_profile,
+        "responder_profile": responder_profile
+    })
+
+@app.post("/projects/{project_id}/onsite-report")
+async def create_onsite_report(
+    project_id: int,
+    selected_tasks: str = Form(None),  # Comma-separated task IDs
+    selected_functions: str = Form(None),  # Comma-separated function IDs
+    description: str = Form(None),
+    customer_signature_name: str = Form(None),
+    responder_signature_name: str = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Create onsite report"""
+    # Parse selected items
+    task_ids = [int(x.strip()) for x in selected_tasks.split(",") if x.strip()] if selected_tasks else []
+    function_ids = [int(x.strip()) for x in selected_functions.split(",") if x.strip()] if selected_functions else []
+    
+    report = models.OnsiteReport(
+        project_id=project_id,
+        selected_task_ids=task_ids,
+        selected_function_ids=function_ids,
+        description=description,
+        customer_signature_name=customer_signature_name,
+        responder_signature_name=responder_signature_name
+    )
+    
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    
+    return RedirectResponse(
+        url=f"/projects/{project_id}/onsite-report/{report.id}/signoff",
+        status_code=303
+    )
+
+@app.get("/projects/{project_id}/onsite-report/{report_id}/signoff", response_class=HTMLResponse)
+async def onsite_report_signoff(
+    request: Request,
+    project_id: int,
+    report_id: int,
+    db: Session = Depends(get_db)
+):
+    """Sign-off screen for onsite report"""
+    report = db.query(models.OnsiteReport).filter(
+        models.OnsiteReport.id == report_id,
+        models.OnsiteReport.project_id == project_id
+    ).first()
+    
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    
+    customer_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "customer"
+    ).first()
+    
+    responder_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "responder"
+    ).first()
+    
+    # Get selected tasks and functions
+    selected_tasks = []
+    if report.selected_task_ids:
+        selected_tasks = db.query(models.Task).filter(
+            models.Task.id.in_(report.selected_task_ids)
+        ).all()
+    
+    selected_functions = []
+    if report.selected_function_ids:
+        selected_functions = db.query(models.ProjectFunction).filter(
+            models.ProjectFunction.id.in_(report.selected_function_ids)
+        ).all()
+    
+    return templates.TemplateResponse("onsite_report_signoff.html", {
+        "request": request,
+        "project": project,
+        "report": report,
+        "customer_profile": customer_profile,
+        "responder_profile": responder_profile,
+        "selected_tasks": selected_tasks,
+        "selected_functions": selected_functions
+    })
+
+@app.get("/projects/{project_id}/onsite-report/{report_id}/pdf")
+async def generate_onsite_report_pdf(
+    project_id: int,
+    report_id: int,
+    db: Session = Depends(get_db)
+):
+    """Generate PDF for onsite report"""
+    report = db.query(models.OnsiteReport).filter(
+        models.OnsiteReport.id == report_id,
+        models.OnsiteReport.project_id == project_id
+    ).first()
+    
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    customer_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "customer"
+    ).first()
+    responder_profile = db.query(models.CompanyProfile).filter(
+        models.CompanyProfile.project_id == project_id,
+        models.CompanyProfile.profile_type == "responder"
+    ).first()
+    
+    # Get selected tasks and functions
+    selected_tasks = []
+    if report.selected_task_ids:
+        selected_tasks = db.query(models.Task).filter(
+            models.Task.id.in_(report.selected_task_ids)
+        ).all()
+    
+    selected_functions = []
+    if report.selected_function_ids:
+        selected_functions = db.query(models.ProjectFunction).filter(
+            models.ProjectFunction.id.in_(report.selected_function_ids)
+        ).all()
+    
+    # Prepare data for PDF
+    report_data = {
+        "project_name": project.name,
+        "customer_profile": customer_profile,
+        "responder_profile": responder_profile,
+        "selected_tasks": selected_tasks,
+        "selected_functions": selected_functions,
+        "description": report.description,
+        "customer_signature_name": report.customer_signature_name,
+        "responder_signature_name": report.responder_signature_name,
+        "report_date": report.report_date
+    }
+    
+    # Generate PDF
+    os.makedirs("exports", exist_ok=True)
+    filename = f"OnsiteReport_{project_id}_{report_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    output_path = os.path.join("exports", filename)
+    
+    try:
+        report_engine.generate_onsite_consensus_pdf(report_data, output_path)
+        return FileResponse(output_path, filename=filename, media_type='application/pdf')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
 
 # ==================== Server Run ====================
 

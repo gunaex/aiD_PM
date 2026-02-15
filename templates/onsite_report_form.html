@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Onsite Report | aiD_PM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .project-name {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-height: 150px;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .signature-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .signature-section h3 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/projects/{{ project.id }}/details" class="back-link">← Back to Project</a>
+        <h1>Onsite /Consensus Note </h1>
+        <p class="project-name">Project: {{ project.name }}</p>
+
+        <form action="/projects/{{ project.id }}/onsite-report" method="POST">
+            <div class="form-group">
+                <label>Select Tasks Reviewed</label>
+                <select name="selected_tasks_multi" id="tasks" multiple>
+                    {% for task in tasks %}
+                    <option value="{{ task.id }}">{{ task.task_id }} - {{ task.task_name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="help-text">Hold Ctrl (Cmd on Mac) to select multiple tasks</p>
+            </div>
+
+            <div class="form-group">
+                <label>Select Functions/Requirements Reviewed</label>
+                <select name="selected_functions_multi" id="functions" multiple>
+                    {% for func in functions %}
+                    <option value="{{ func.id }}">{{ func.function_code }} - {{ func.function_name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="help-text">Hold Ctrl (Cmd on Mac) to select multiple functions</p>
+            </div>
+
+            <div class="form-group">
+                <label>Observations / Description</label>
+                <textarea name="description" placeholder="Enter onsite observations (max 3 lines recommended)"
+                    rows="3"></textarea>
+            </div>
+
+            <div class="signature-section">
+                <h3>Signature Information</h3>
+                <div class="form-group">
+                    <label>Customer Representative Name</label>
+                    <input type="text" name="customer_signature_name" placeholder="Full name for signature">
+                </div>
+                <div class="form-group">
+                    <label>Responder Representative Name</label>
+                    <input type="text" name="responder_signature_name" placeholder="Full name for signature">
+                </div>
+            </div>
+
+            <input type="hidden" name="selected_tasks" id="selected_tasks_hidden">
+            <input type="hidden" name="selected_functions" id="selected_functions_hidden">
+
+            <button type="submit">Create Report & Preview</button>
+        </form>
+    </div>
+
+    <script>
+        // Convert multi-select to comma-separated values
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const tasksSelect = document.getElementById('tasks');
+            const functionsSelect = document.getElementById('functions');
+
+            const selectedTasks = Array.from(tasksSelect.selectedOptions).map(opt => opt.value);
+            const selectedFunctions = Array.from(functionsSelect.selectedOptions).map(opt => opt.value);
+
+            document.getElementById('selected_tasks_hidden').value = selectedTasks.join(',');
+            document.getElementById('selected_functions_hidden').value = selectedFunctions.join(',');
+        });
+    </script>
+</body>
+
+</html>
