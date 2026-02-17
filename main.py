@@ -96,7 +96,22 @@ def generate_task_id(customer: str, project_name: str, db: Session) -> str:
     return f"{base_prefix}{next_number:03d}"
 
 
-    return f"FUNC-{next_number:03d}"
+def generate_function_code(project_id: int, db: Session) -> str:
+    """Generate unique Function Code format: FURE-001"""
+    # Find the maximum existing numeric suffix for FURE-XXX
+    existing_functions = db.query(models.ProjectFunction).all()
+
+    used_numbers = []
+    for f in existing_functions:
+        if f.function_code and f.function_code.startswith("FURE-"):
+            try:
+                num = int(f.function_code.split("-")[1])
+                used_numbers.append(num)
+            except (ValueError, IndexError):
+                continue
+
+    next_number = max(used_numbers) + 1 if used_numbers else 1
+    return f"FURE-{next_number:03d}"
 
 
 def get_timeline_months(start_date, end_date):
@@ -299,9 +314,15 @@ def get_system_recommendation(task_type: str, db: Session) -> dict:
     Simple Hidden AI Logic: แนะนำคนจาก Skill และ Speed/Quality score
     """
     if task_type in ["Dev", "Fix"]:
-        best_match = db.query(models.Resource).filter(models.Resource.is_active == True).order_by(models.Resource.speed_score.desc()).first()
+        best_match = db.query(models.Resource).filter(
+            models.Resource.is_active == True,
+            models.Resource.position.notin_(["Customer", "Vendor", "Other"])
+        ).order_by(models.Resource.speed_score.desc()).first()
     else:
-        best_match = db.query(models.Resource).filter(models.Resource.is_active == True).order_by(models.Resource.quality_score.desc()).first()
+        best_match = db.query(models.Resource).filter(
+            models.Resource.is_active == True,
+            models.Resource.position.notin_(["Customer", "Vendor", "Other"])
+        ).order_by(models.Resource.quality_score.desc()).first()
     
     if best_match:
         return {
@@ -964,7 +985,7 @@ async def update_issue_form(
     
     # Update closed_at if closing
     if status == "Closed" and old_status != "Closed":
-        issue.closed_at = datetime.datetime.utcnow()
+        issue.closed_at = datetime.datetime.now()
     
     db.commit()
     
@@ -1129,7 +1150,7 @@ async def update_function(
     if estimated_hours is not None:
         function.estimated_hours = estimated_hours
     
-    function.updated_at = datetime.datetime.utcnow()
+    function.updated_at = datetime.datetime.now()
     db.commit()
     db.refresh(function)
     
@@ -1138,6 +1159,27 @@ async def update_function(
         "function_id": function_id,
         "function_name": function.function_name
     }
+
+@app.get("/api/functions/detail/{function_id}")
+async def get_function_detail(function_id: int, db: Session = Depends(get_db)):
+    """API endpoint to get full details of a single function"""
+    function = db.query(models.ProjectFunction).filter(models.ProjectFunction.id == function_id).first()
+    if not function:
+        raise HTTPException(status_code=404, detail="Function not found")
+    
+    return {
+        "id": function.id,
+        "function_code": function.function_code,
+        "function_name": function.function_name,
+        "category": function.category,
+        "priority": function.priority,
+        "status": function.status,
+        "estimated_hours": function.estimated_hours,
+        "description": function.description,
+        "project_id": function.project_id,
+        "parent_function_id": function.parent_function_id
+    }
+
 
 @app.post("/functions/{function_id}/delete")
 async def delete_function(function_id: int, db: Session = Depends(get_db)):
@@ -1888,7 +1930,9 @@ def find_resources(q: str = "", db: Session = Depends(get_db)):
     """Find resources by full name, skills, and position only"""
     try:
         # Get all active resources
-        resources = db.query(models.Resource).filter(models.Resource.is_active == True).all()
+        resources = db.query(models.Resource).filter(
+            models.Resource.is_active == True
+        ).all()
         
         results = []
         for r in resources:
@@ -2340,7 +2384,7 @@ async def export_project_pdf_endpoint(project_id: int, db: Session = Depends(get
     issues_critical = len([i for i in issues if i.severity.lower() in ["critical", "high"] and i.status.lower() != "closed"])
     
     # Issues resolved in the last 7 days
-    seven_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    seven_days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
     issues_resolved_week = len([i for i in issues if i.status.lower() == "closed" and i.closed_at and i.closed_at >= seven_days_ago])
     
     # 5. Upcoming Milestones (Next 3 tasks/phases with deadlines)

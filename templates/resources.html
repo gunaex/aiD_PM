@@ -15,9 +15,30 @@
             overflow: hidden;
         }
 
-        .sidebar-item-active {
-            border-right: 4px solid #3b82f6;
-            background: #1e293b;
+        .form-control {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            color: #0f172a;
+            outline: none;
+            transition: all 0.2s;
+            height: 42px;
+            /* Explicit height to ensure same size for input and select */
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            background-color: white;
+        }
+
+        textarea.form-control {
+            height: auto;
+            min-height: 100px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #3b82f6;
+            border-color: #3b82f6;
         }
     </style>
 </head>
@@ -76,45 +97,43 @@
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-1">Full Name</label>
                                 <input type="text" name="full_name" placeholder="e.g. Somchai Jaidee"
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required>
+                                    class="form-control" required>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 mb-1">Nickname</label>
-                                    <input type="text" name="nickname" placeholder="e.g. Chai"
-                                        class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    <input type="text" name="nickname" placeholder="e.g. Chai" class="form-control"
                                         required>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 mb-1">Position</label>
-                                    <select name="position"
-                                        class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                                    <select name="position" class="form-control">
                                         <option value="">Select Position</option>
                                         <option value="Dev">Developer</option>
                                         <option value="SA">System Analyst</option>
                                         <option value="Tester">Tester</option>
                                         <option value="PM">Project Manager</option>
                                         <option value="BA">Business Analyst</option>
+                                        <option value="Customer">Customer</option>
+                                        <option value="Vendor">Vendor</option>
+                                        <option value="Other">Other</option>
                                     </select>
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-1">Company</label>
                                 <input type="text" name="company" placeholder="e.g. Outsourcing Co., Ltd."
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                                    class="form-control">
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 mb-1">Speed (1-10)</label>
-                                    <input type="number" name="speed" min="1" max="10" value="5"
-                                        class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    <input type="number" name="speed" min="1" max="10" value="5" class="form-control"
                                         required>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 mb-1">Quality (1-10)</label>
-                                    <input type="number" name="quality" min="1" max="10" value="5"
-                                        class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    <input type="number" name="quality" min="1" max="10" value="5" class="form-control"
                                         required>
                                 </div>
                             </div>
@@ -130,11 +149,13 @@
                                     </div>
                                     <div class="flex gap-2">
                                         <input type="text" id="new-skill-name" placeholder="Skill (e.g. Python)"
-                                            class="flex-1 text-xs text-slate-900 border border-slate-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                                            class="form-control !h-8 !px-2 !py-0 !text-[10px] !rounded-md"
+                                            style="flex: 2;">
                                         <input type="number" id="new-skill-level" min="1" max="10" placeholder="Lvl"
-                                            class="w-16 text-xs text-slate-900 border border-slate-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                                            class="form-control !h-8 !px-2 !py-0 !text-[10px] !rounded-md"
+                                            style="width: 50px;">
                                         <button type="button" onclick="addSkill()"
-                                            class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700">
+                                            class="bg-blue-600 text-white px-3 h-8 rounded-md text-[10px] font-bold hover:bg-blue-700">
                                             Add
                                         </button>
                                     </div>
@@ -144,7 +165,7 @@
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-1">Comment / Notes</label>
                                 <textarea name="comment" rows="3" placeholder="Additional details..."
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                    class="form-control"></textarea>
                             </div>
                         </div>
                     </div>
@@ -266,49 +287,47 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Full
                                 Name</label>
-                            <input type="text" name="full_name" id="edit_full_name" required
-                                class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
+                            <input type="text" name="full_name" id="edit_full_name" required class="form-control">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Nickname</label>
-                                <input type="text" name="nickname" id="edit_nickname" required
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
+                                <input type="text" name="nickname" id="edit_nickname" required class="form-control">
                             </div>
                             <div>
                                 <label
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Position</label>
-                                <select name="position" id="edit_position"
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
+                                <select name="position" id="edit_position" class="form-control">
                                     <option value="Dev">Developer</option>
                                     <option value="SA">System Analyst</option>
                                     <option value="Tester">Tester</option>
                                     <option value="PM">Project Manager</option>
                                     <option value="BA">Business Analyst</option>
+                                    <option value="Customer">Customer</option>
+                                    <option value="Vendor">Vendor</option>
+                                    <option value="Other">Other</option>
                                 </select>
                             </div>
                         </div>
                         <div>
                             <label
                                 class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Company</label>
-                            <input type="text" name="company" id="edit_company"
-                                class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
+                            <input type="text" name="company" id="edit_company" class="form-control">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Speed
                                     (1-10)</label>
-                                <input type="number" name="speed" id="edit_speed" min="1" max="10"
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
+                                <input type="number" name="speed" id="edit_speed" min="1" max="10" class="form-control">
                             </div>
                             <div>
                                 <label
                                     class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Quality
                                     (1-10)</label>
                                 <input type="number" name="quality" id="edit_quality" min="1" max="10"
-                                    class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none text-black">
+                                    class="form-control">
                             </div>
                         </div>
                     </div>
@@ -321,19 +340,19 @@
                                 <div id="edit-skills-list" class="flex flex-wrap gap-2 mb-3"></div>
                                 <div class="flex gap-2">
                                     <input type="text" id="edit-new-skill-name" placeholder="Skill"
-                                        class="flex-1 text-xs text-slate-900 border border-slate-300 p-1 rounded text-black">
+                                        class="form-control !h-8 !px-2 !py-0 !text-[10px] !rounded-md" style="flex: 2;">
                                     <input type="number" id="edit-new-skill-level" min="1" max="10" placeholder="Lvl"
-                                        class="w-12 text-xs text-slate-900 border border-slate-300 p-1 rounded text-black">
+                                        class="form-control !h-8 !px-2 !py-0 !text-[10px] !rounded-md"
+                                        style="width: 50px;">
                                     <button type="button" onclick="addEditSkill()"
-                                        class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold">Add</button>
+                                        class="bg-blue-600 text-white px-3 h-8 rounded-md text-[10px] font-bold">Add</button>
                                 </div>
                             </div>
                         </div>
                         <div>
                             <label
                                 class="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Comment</label>
-                            <textarea name="comment" id="edit_comment" rows="3"
-                                class="w-full text-slate-900 border border-slate-300 p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                            <textarea name="comment" id="edit_comment" rows="3" class="form-control"></textarea>
                         </div>
                     </div>
                 </div>

@@ -28,6 +28,31 @@
             opacity: 0;
             transition: opacity 0.2s;
         }
+
+        .form-control {
+            display: block;
+            width: 100%;
+            height: 42px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            color: #0f172a;
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        textarea.form-control {
+            height: auto;
+            min-height: 80px;
+        }
     </style>
 </head>
 
@@ -106,8 +131,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Project *</label>
-                            <select name="project_id" required
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                            <select name="project_id" required class="form-control">
                                 <option value="">-- Select Project --</option>
                                 {% for project in projects %}
                                 <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{%
@@ -118,8 +142,7 @@
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Parent Function
                                 (Optional)</label>
-                            <select name="parent_function_id"
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                            <select name="parent_function_id" class="form-control">
                                 <option value="">-- Root Level --</option>
                                 {% for func in functions %}
                                 <option value="{{ func.id }}">{{ func.function_code }}: {{ func.function_name }}
@@ -132,20 +155,26 @@
                         <div class="col-span-2">
                             <label class="block text-sm font-bold text-slate-700 mb-2">Function Name *</label>
                             <input type="text" name="function_name" required
-                                placeholder="e.g., User Authentication, Payment Gateway"
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                                placeholder="e.g., User Authentication, Payment Gateway" class="form-control">
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Category</label>
-                            <input type="text" name="category" placeholder="e.g., UI, Backend, API"
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                            <select name="category" class="form-control">
+                                <option value="Requirement">Requirement</option>
+                                <option value="Documents">Documents</option>
+                                <option value="Support">Support</option>
+                                <option value="Function" selected>Function</option>
+                                <option value="Change Request">Change Request</option>
+                                <option value="New Request">New Request</option>
+                                <option value="Discussion">Discussion</option>
+                                <option value="Other">Other</option>
+                            </select>
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Priority</label>
-                            <select name="priority"
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                            <select name="priority" class="form-control">
                                 <option value="low">Low</option>
                                 <option value="medium" selected>Medium</option>
                                 <option value="high">High</option>
@@ -153,14 +182,12 @@
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Estimated Effort (Hours)</label>
-                            <input type="number" name="estimated_hours" step="0.5" value="0"
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
+                            <input type="number" name="estimated_hours" step="0.5" value="0" class="form-control">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">Description</label>
-                        <textarea name="description" rows="2"
-                            class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <textarea name="description" rows="2" class="form-control"></textarea>
                     </div>
                     <div class="flex gap-3">
                         <button type="submit"
@@ -353,14 +380,12 @@
                     <input type="hidden" name="function_id" id="edit_id">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">Function Name</label>
-                        <input type="text" name="function_name" id="edit_name" required
-                            class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 text-black">
+                        <input type="text" name="function_name" id="edit_name" required class="form-control">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Status</label>
-                            <select name="status" id="edit_status"
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 text-black">
+                            <select name="status" id="edit_status" class="form-control">
                                 <option value="not_started">Not Started</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="completed">Completed</option>
@@ -369,18 +394,35 @@
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Priority</label>
-                            <select name="priority" id="edit_priority"
-                                class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 text-black">
+                            <select name="priority" id="edit_priority" class="form-control">
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
                                 <option value="high">High</option>
                             </select>
                         </div>
                     </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                            <select name="category" id="edit_category" class="form-control">
+                                <option value="Requirement">Requirement</option>
+                                <option value="Documents">Documents</option>
+                                <option value="Support">Support</option>
+                                <option value="Function">Function</option>
+                                <option value="Change Request">Change Request</option>
+                                <option value="New Request">New Request</option>
+                                <option value="Discussion">Discussion</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Est. Hours</label>
+                            <input type="number" name="estimated_hours" id="edit_hours" step="0.5" class="form-control">
+                        </div>
+                    </div>
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Est. Hours</label>
-                        <input type="number" name="estimated_hours" id="edit_hours" step="0.5"
-                            class="w-full border border-slate-300 text-slate-900 rounded-lg px-4 py-2 text-black">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                        <textarea name="description" id="edit_description" rows="3" class="form-control"></textarea>
                     </div>
                     <div class="flex justify-end gap-3 pt-4">
                         <button type="button" onclick="closeEditModal()"
@@ -408,10 +450,28 @@
         }
 
         async function editFunction(funcId) {
-            // In a real app, fetch from API. For now, we'll find in the list or just use placeholders
-            document.getElementById('edit_id').value = funcId;
-            // Simplified: just show modal. You'd normally populate it.
-            document.getElementById('editModal').classList.remove('hidden');
+            try {
+                // Fetch function details from the new API
+                const response = await fetch(`/api/functions/detail/${funcId}`);
+                if (!response.ok) throw new Error('Failed to fetch details');
+
+                const data = await response.json();
+
+                // Populate the form fields
+                document.getElementById('edit_id').value = data.id;
+                document.getElementById('edit_name').value = data.function_name || '';
+                document.getElementById('edit_status').value = data.status || 'not_started';
+                document.getElementById('edit_priority').value = data.priority || 'medium';
+                document.getElementById('edit_category').value = data.category || '';
+                document.getElementById('edit_hours').value = data.estimated_hours || 0;
+                document.getElementById('edit_description').value = data.description || '';
+
+                // Show modal
+                document.getElementById('editModal').classList.remove('hidden');
+            } catch (err) {
+                console.error('Error fetching function details:', err);
+                alert('Could not load function details');
+            }
         }
 
         function closeEditModal() {

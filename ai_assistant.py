@@ -233,7 +233,8 @@ class AIAssistant:
         Returns: Top N recommended resources with match scores
         """
         resources = db.query(models.Resource).filter(
-            models.Resource.is_active == True
+            models.Resource.is_active == True,
+            models.Resource.position.notin_(["Customer", "Vendor", "Other"])
         ).all()
         
         if not resources:
