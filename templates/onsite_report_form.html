@@ -120,6 +120,43 @@
             color: #7f8c8d;
             margin-top: 5px;
         }
+
+        .checkbox-list {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 600px;
+            /* Approx 15 items */
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .checkbox-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            margin-top: 4px;
+        }
+
+        .checkbox-item label {
+            margin-bottom: 0;
+            font-weight: normal;
+            cursor: pointer;
+            line-height: 1.4;
+        }
     </style>
 </head>
 
@@ -132,22 +169,36 @@
         <form action="/projects/{{ project.id }}/onsite-report" method="POST">
             <div class="form-group">
                 <label>Select Tasks Reviewed</label>
-                <select name="selected_tasks_multi" id="tasks" multiple>
+                <div class="checkbox-list" id="tasks-list">
+                    {% if tasks %}
                     {% for task in tasks %}
-                    <option value="{{ task.id }}">{{ task.task_id }} - {{ task.task_name }}</option>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="task_{{ task.id }}" name="task_checkbox" value="{{ task.id }}">
+                        <label for="task_{{ task.id }}">{{ task.task_id }} - {{ task.task_name }}</label>
+                    </div>
                     {% endfor %}
-                </select>
-                <p class="help-text">Hold Ctrl (Cmd on Mac) to select multiple tasks</p>
+                    {% else %}
+                    <p class="text-gray-500 text-sm p-2">No active tasks found for this project.</p>
+                    {% endif %}
+                </div>
+                <p class="help-text">Check all tasks that apply to this report</p>
             </div>
 
             <div class="form-group">
                 <label>Select Functions/Requirements Reviewed</label>
-                <select name="selected_functions_multi" id="functions" multiple>
+                <div class="checkbox-list" id="functions-list">
+                    {% if functions %}
                     {% for func in functions %}
-                    <option value="{{ func.id }}">{{ func.function_code }} - {{ func.function_name }}</option>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="func_{{ func.id }}" name="func_checkbox" value="{{ func.id }}">
+                        <label for="func_{{ func.id }}">{{ func.function_code }} - {{ func.function_name }}</label>
+                    </div>
                     {% endfor %}
-                </select>
-                <p class="help-text">Hold Ctrl (Cmd on Mac) to select multiple functions</p>
+                    {% else %}
+                    <p class="text-gray-500 text-sm p-2">No active functions found for this project.</p>
+                    {% endif %}
+                </div>
+                <p class="help-text">Check all functions that apply to this report</p>
             </div>
 
             <div class="form-group">
@@ -177,12 +228,15 @@
 
     <script>
         // Convert multi-select to comma-separated values
+        // Convert multi-select checkboxes to comma-separated values
         document.querySelector('form').addEventListener('submit', function (e) {
-            const tasksSelect = document.getElementById('tasks');
-            const functionsSelect = document.getElementById('functions');
+            // Get all checked task checkboxes
+            const taskCheckboxes = document.querySelectorAll('input[name="task_checkbox"]:checked');
+            const selectedTasks = Array.from(taskCheckboxes).map(cb => cb.value);
 
-            const selectedTasks = Array.from(tasksSelect.selectedOptions).map(opt => opt.value);
-            const selectedFunctions = Array.from(functionsSelect.selectedOptions).map(opt => opt.value);
+            // Get all checked function checkboxes
+            const funcCheckboxes = document.querySelectorAll('input[name="func_checkbox"]:checked');
+            const selectedFunctions = Array.from(funcCheckboxes).map(cb => cb.value);
 
             document.getElementById('selected_tasks_hidden').value = selectedTasks.join(',');
             document.getElementById('selected_functions_hidden').value = selectedFunctions.join(',');

@@ -162,7 +162,7 @@ def generate_onsite_consensus_pdf(report_data: dict, output_path: str):
     pdf.set_y(25)
     pdf.set_font(font_family, 'B', 26)
     pdf.set_text_color(44, 62, 80)  # Dark blue-gray
-    pdf.cell(0, 12, 'Onsite Consensus Report', 0, 1, 'C')
+    pdf.cell(0, 12, 'On-Site / Discussion / Consensus Report', 0, 1, 'C')
     
     # Project name subtitle
     pdf.set_font(font_family, '', 13)
@@ -171,7 +171,12 @@ def generate_onsite_consensus_pdf(report_data: dict, output_path: str):
     
     # Date
     pdf.set_font(font_family, '', 11)
-    report_date = report_data.get('report_date', datetime.date.today())
+    # User requested current date (Local Time UTC+7)
+    # Server might be UTC, so we manually adjust +7 hours
+    tz_offset = datetime.timedelta(hours=7)
+    now_th = datetime.datetime.utcnow() + tz_offset
+    report_date = now_th.date()
+    
     pdf.cell(0, 6, report_date.strftime('%B %d, %Y'), 0, 1, 'C')
     
     pdf.ln(3)
@@ -198,13 +203,17 @@ def generate_onsite_consensus_pdf(report_data: dict, output_path: str):
         pdf.set_x(10)
         pdf.set_font(font_family, 'B', 12)
         pdf.set_text_color(44, 62, 80)
-        pdf.cell(col_width, 7, customer_profile.company_name or "N/A", 0, 1)
+        # Use multi_cell to handle long names
+        pdf.multi_cell(col_width, 6, customer_profile.company_name or "N/A", 0, 'L')
         
         pdf.set_x(10)
         pdf.set_font(font_family, '', 10)
         pdf.set_text_color(100, 100, 100)
         pdf.multi_cell(col_width, 5, customer_profile.address or "")
     
+    # Store Y position after Customer block
+    max_y = pdf.get_y()
+
     # Right side - Responder
     pdf.set_xy(pdf.epw/2 + 15, start_y)
     pdf.set_font(font_family, 'B', 11)
@@ -215,14 +224,71 @@ def generate_onsite_consensus_pdf(report_data: dict, output_path: str):
         pdf.set_x(pdf.epw/2 + 15)
         pdf.set_font(font_family, 'B', 12)
         pdf.set_text_color(44, 62, 80)
-        pdf.cell(col_width, 7, responder_profile.company_name or "N/A", 0, 1)
+        # Use multi_cell to handle long names
+        pdf.multi_cell(col_width, 6, responder_profile.company_name or "N/A", 0, 'L')
         
         pdf.set_x(pdf.epw/2 + 15)
         pdf.set_font(font_family, '', 10)
         pdf.set_text_color(100, 100, 100)
         pdf.multi_cell(col_width, 5, responder_profile.address or "")
-    
-    pdf.ln(20)
+
+    # Compare Y position after Responder block
+    max_y = max(max_y, pdf.get_y())
+    pdf.set_y(max_y + 10)
+
+    # --- Tasks Reviewed ---
+    selected_tasks = report_data.get('selected_tasks', [])
+    if selected_tasks:
+        pdf.set_font(font_family, 'B', 14)
+        pdf.set_text_color(44, 62, 80)
+        pdf.cell(0, 8, "Tasks Reviewed", 0, 1)
+        
+        # Horizontal line
+        pdf.set_draw_color(200, 200, 200)
+        pdf.set_line_width(0.3)
+        pdf.line(10, pdf.get_y(), pdf.epw + 10, pdf.get_y())
+        pdf.ln(4)
+        
+        pdf.set_font(font_family, '', 11)
+        pdf.set_text_color(60, 60, 60)
+        
+        for task in selected_tasks:
+            task_str = f"{task.task_id} - {task.task_name}"
+            pdf.multi_cell(0, 7, task_str, 0, 'L')
+            # Light separator line between items
+            current_y = pdf.get_y()
+            pdf.set_draw_color(240, 240, 240)
+            pdf.line(10, current_y, pdf.epw + 10, current_y)
+            pdf.ln(1) # Small gap
+            
+        pdf.ln(6)
+
+    # --- Functions/Requirements Reviewed ---
+    selected_functions = report_data.get('selected_functions', [])
+    if selected_functions:
+        pdf.set_font(font_family, 'B', 14)
+        pdf.set_text_color(44, 62, 80)
+        pdf.cell(0, 8, "Functions/Requirements Reviewed", 0, 1)
+        
+        # Horizontal line
+        pdf.set_draw_color(200, 200, 200)
+        pdf.set_line_width(0.3)
+        pdf.line(10, pdf.get_y(), pdf.epw + 10, pdf.get_y())
+        pdf.ln(4)
+        
+        pdf.set_font(font_family, '', 11)
+        pdf.set_text_color(60, 60, 60)
+        
+        for func in selected_functions:
+            func_str = f"{func.function_code} - {func.function_name}"
+            pdf.multi_cell(0, 7, func_str, 0, 'L')
+            # Light separator line between items
+            current_y = pdf.get_y()
+            pdf.set_draw_color(240, 240, 240)
+            pdf.line(10, current_y, pdf.epw + 10, current_y)
+            pdf.ln(1)
+            
+        pdf.ln(6)
     
     # --- Observations ---
     pdf.set_font(font_family, 'B', 16)
@@ -237,7 +303,8 @@ def generate_onsite_consensus_pdf(report_data: dict, output_path: str):
     
     # Observation text in light gray box
     pdf.set_fill_color(248, 250, 252)
-    obs_text = report_data.get('description', 'TEST')
+    # Ensure obs_text is a string, even if None is passed
+    obs_text = report_data.get('description') or ""
     
     pdf.set_font(font_family, '', 11)
     pdf.set_text_color(60, 60, 60)
@@ -282,8 +349,9 @@ def generate_onsite_consensus_pdf(report_data: dict, output_path: str):
     pdf.ln(1)
     pdf.set_font(font_family, 'B', 11)
     pdf.set_text_color(44, 62, 80)
-    pdf.cell(col_w, 6, report_data.get('customer_signature_name', ''), 0, 0, 'C')
-    pdf.cell(col_w, 6, report_data.get('responder_signature_name', ''), 0, 1, 'C')
+    # Ensure names are strings
+    pdf.cell(col_w, 6, report_data.get('customer_signature_name') or '', 0, 0, 'C')
+    pdf.cell(col_w, 6, report_data.get('responder_signature_name') or '', 0, 1, 'C')
     
     # Save to disk
     pdf.output(output_path)
