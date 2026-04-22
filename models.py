@@ -187,6 +187,7 @@ class ProjectFunction(Base):
     # Effort tracking
     estimated_hours = Column(Float, default=0.0)
     actual_hours = Column(Float, default=0.0)
+    actual_progress = Column(Float, default=0.0)
     
     # Metadata
     created_at = Column(DateTime, default=datetime.datetime.now)

@@ -49,6 +49,8 @@
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
                 <a href="/functions"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Functions/Req</a>
+                <a href="/tasks"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Tasks</a>
                 <a href="/issues"
                     class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
             </nav>
@@ -113,7 +115,7 @@
                 </div>
                 <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                     <div class="text-slate-500 text-xs font-bold uppercase mb-1">Total Tasks</div>
-                    <div class="text-2xl font-bold">{{ tasks|length }}</div>
+                    <div class="text-2xl font-bold text-yellow-600">{{ tasks|length }}</div>
                 </div>
                 <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-green-500">
                     <div class="text-slate-500 text-xs font-bold uppercase mb-1">Completed</div>
@@ -168,6 +170,7 @@
                             {% set ns.total_est = ns.total_est + linked_tasks|sum(attribute='estimated_hours') %}
                             {% set ns.total_act = ns.total_act + linked_tasks|sum(attribute='actual_hours') %}
                         {% else %}
+                            {% set ns.total_progress = ns.total_progress + (func.actual_progress|default(0)) %}
                             {% set ns.total_est = ns.total_est + func.estimated_hours %}
                             {% set ns.total_act = ns.total_act + func.actual_hours %}
                         {% endif %}
@@ -206,9 +209,61 @@
             </div>
             {% endif %}
 
+            <!-- Tasks Progress Summary -->
+            {% if tasks %}
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-slate-800 text-xl">Task Type Progress</h3>
+                    <a href="/tasks?project_id={{ project.id }}"
+                        class="text-sm text-yellow-600 hover:text-yellow-800 font-medium">Full Task View →</a>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {% for cat, cat_tasks in tasks | groupby('task_type') %}
+                    {% set ns = namespace(total_est=0, total_act=0, total_progress=0, task_count=0) %}
+                    
+                    {% for task in cat_tasks %}
+                        {% set ns.task_count = ns.task_count + 1 %}
+                        {% set ns.total_progress = ns.total_progress + task.actual_progress %}
+                        {% set ns.total_est = ns.total_est + task.estimated_hours %}
+                        {% set ns.total_act = ns.total_act + task.actual_hours %}
+                    {% endfor %}
+                    
+                    {% set avg_p = (ns.total_progress / ns.task_count)|round if ns.task_count > 0 else 0 %}
+                    
+                    <div class="border border-yellow-100 rounded-2xl p-5 bg-gradient-to-br from-yellow-50 to-yellow-100/50 hover:shadow-md transition-all duration-200 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-white shadow-sm text-yellow-600 rounded-xl group-hover:scale-110 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                            </div>
+                            <span class="text-[10px] font-bold text-yellow-700/50 uppercase tracking-wider bg-white px-2 py-1 rounded-full shadow-sm">{{ ns.task_count }} Items</span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-3 truncate" title="{{ cat or 'Uncategorized' }}">{{ cat or 'Uncategorized' }}</h4>
+                        <div class="space-y-2 mt-auto">
+                            <div class="flex justify-between items-end">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-yellow-700/50 uppercase font-bold">Progress</span>
+                                    <span class="text-lg font-bold {% if avg_p == 100 %}text-green-600{% elif avg_p > 0 %}text-yellow-600{% else %}text-slate-500{% endif %}">{{ avg_p }}%</span>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[10px] text-yellow-700/50 uppercase font-bold">Est. Effort</span>
+                                    <span class="text-sm font-bold text-slate-600">{{ "%.1f"|format(ns.total_est) }}h</span>
+                                </div>
+                            </div>
+                            <div class="w-full bg-yellow-200/50 rounded-full h-1.5 overflow-hidden">
+                                <div class="{% if avg_p == 100 %}bg-green-500{% else %}bg-yellow-500{% endif %} h-1.5 rounded-full transition-all duration-500" style="width: {{ avg_p }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Phase Timeline -->
             {% if phases %}
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-12">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-slate-800 text-xl">Project Timeline - Gantt View</h3>
                     <div class="flex gap-2">
@@ -319,9 +374,9 @@
 
                                     <!-- Phase Bar -->
                                     <div class="absolute top-1/2 transform -translate-y-1/2 h-6 rounded shadow-sm cursor-pointer transition-all hover:shadow-md
-                                              {% if phase.is_recovery_mode %}bg-red-400 hover:bg-red-500{% else %}bg-blue-400 hover:bg-blue-500{% endif %}"
+                                              {% if phase.is_recovery_mode %}bg-red-400 hover:bg-red-500{% elif phase.status == 'completed' %}bg-green-400 hover:bg-green-500{% elif phase.status == 'in_progress' %}bg-amber-400 hover:bg-amber-500{% else %}bg-blue-400 hover:bg-blue-500{% endif %}"
                                         style="left: {{ left_pct }}%; width: {{ width_pct }}%; min-width: 20px"
-                                        onclick="showPhaseDetails('{{ phase.phase_name }}', '{{ phase.planned_start.strftime('%d %b %Y') }}', '{{ phase.planned_end.strftime('%d %b %Y') }}', {{ duration }})">
+                                        onclick="showPhaseDetails('{{ phase.phase_name }}', '{{ phase.planned_start.strftime('%d %b %Y') }}', '{{ phase.planned_end.strftime('%d %b %Y') }}', {{ duration }}, '{{ phase.status }}')">
                                         <div class="flex items-center h-full px-2">
                                             <span class="text-xs font-semibold text-white truncate">
                                                 {{ phase.phase_name }}
@@ -423,6 +478,19 @@
                                             </div>
                                             {% endfor %}
                                         </div>
+                                        <!-- Legend -->
+                                        <div class="flex gap-4 mt-3 flex-wrap text-xs text-slate-500">
+                                            <span class="flex items-center gap-1"><span
+                                                    class="w-3 h-3 rounded bg-blue-400 inline-block"></span>Pending</span>
+                                            <span class="flex items-center gap-1"><span
+                                                    class="w-3 h-3 rounded bg-amber-400 inline-block"></span>In Progress</span>
+                                            <span class="flex items-center gap-1"><span
+                                                    class="w-3 h-3 rounded bg-green-400 inline-block"></span>Completed</span>
+                                            <span class="flex items-center gap-1"><span
+                                                    class="w-3 h-3 rounded bg-red-400 inline-block"></span>Recovery</span>
+                                            <span class="flex items-center gap-1"><span
+                                                    class="w-2 h-3 bg-green-500 inline-block opacity-70"></span>Today</span>
+                                        </div>
                                         <div class="text-xs text-slate-500 mt-2">
                                             <span class="text-green-700">■ Low Load (1 phase)</span> •
                                             <span class="text-yellow-700">■ Medium Load (2 phases)</span> •
@@ -443,199 +511,101 @@
                         </div>
                         {% endif %}
 
-                        <!-- Project Metadata -->
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
-                            <h3 class="font-bold text-slate-800 mb-4">Project Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div class="border-l-4 border-green-500 pl-4">
-                                    <p class="text-xs text-slate-500 uppercase font-bold">Progress</p>
-                                    <p class="text-lg font-bold text-slate-800">{{ overall_progress|round(1) }}%</p>
+                        <!-- Project Information Card -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-12">
+                            <h3 class="font-bold text-slate-800 mb-6 text-lg">Project Information</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                                <div class="border-l-4 border-green-500 pl-4 py-1">
+                                    <p class="text-xs text-slate-500 uppercase font-bold mb-1">Overall Progress</p>
+                                    <p class="text-2xl font-bold text-slate-800">{{ overall_progress|round(1) }}%</p>
                                 </div>
-                                <div class="border-l-4 border-blue-500 pl-4">
-                                    <p class="text-xs text-slate-500 uppercase font-bold">Created</p>
-                                    <p class="text-lg font-bold text-slate-800">{{
+                                <div class="border-l-4 border-blue-500 pl-4 py-1">
+                                    <p class="text-xs text-slate-500 uppercase font-bold mb-1">Creation Date</p>
+                                    <p class="text-2xl font-bold text-slate-800">{{
                                         project.created_at.strftime('%Y-%m-%d') }}</p>
                                 </div>
-                                <div class="border-l-4 border-purple-500 pl-4">
-                                    <p class="text-xs text-slate-500 uppercase font-bold">Snapshots</p>
-                                    <p class="text-lg font-bold text-slate-800">{{ snapshots|length }} weeks</p>
+                                <div class="border-l-4 border-purple-500 pl-4 py-1">
+                                    <p class="text-xs text-slate-500 uppercase font-bold mb-1">Timeline Snapshots</p>
+                                    <p class="text-2xl font-bold text-slate-800">{{ snapshots|length }} weeks</p>
                                 </div>
-                                <div class="border-l-4 border-orange-500 pl-4">
-                                    <p class="text-xs text-slate-500 uppercase font-bold">Project ID</p>
-                                    <p class="text-sm font-bold text-slate-800">#{{ project.id }}</p>
+                                <div class="border-l-4 border-orange-500 pl-4 py-1">
+                                    <p class="text-xs text-slate-500 uppercase font-bold mb-1">Unique Project ID</p>
+                                    <p class="text-lg font-bold text-slate-800">#{{ project.id }}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Tasks Management -->
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-                            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                                <h3 class="font-bold text-slate-800">Project Tasks</h3>
-                                <div class="flex gap-3">
-                                    <button onclick="showImportModal()"
-                                        class="text-sm text-green-600 hover:text-green-800 font-medium">
-                                        Import CSV ↑
-                                    </button>
-                                    <a href="/projects/{{ project.id }}/export-csv"
-                                        class="text-sm text-purple-600 hover:text-purple-800 font-medium">
-                                        Export CSV ↓
-                                    </a>
-                                    <a href="/tasks/create?project_id={{ project.id }}"
-                                        class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                        + Add Task
-                                    </a>
+                        <!-- Project Notes Card -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-12">
+                            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                <h3 class="font-bold text-slate-800 text-lg">Project Notes & Activity</h3>
+                                <span class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold shadow-sm border border-blue-200">{{ notes|length }} Total Notes</span>
+                            </div>
+                            <div class="p-8">
+                                <!-- Add Note Form -->
+                                <form action="/projects/{{ project.id }}/notes" method="post" class="mb-8">
+                                    <div class="flex gap-4">
+                                        <div class="flex-1">
+                                            <input type="text" name="note_text" 
+                                                class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black transition-all"
+                                                placeholder="Type a project update or note here..." required>
+                                        </div>
+                                        <button type="submit"
+                                            class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                            </svg>
+                                            Post Note
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Notes List (Scrollable) -->
+                                <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {% if notes %}
+                                    {% for note in notes %}
+                                    <div class="p-5 bg-white rounded-xl border border-slate-200 hover:border-blue-200 hover:shadow-md transition-all group relative">
+                                        <div class="flex justify-between items-start">
+                                            <p class="text-slate-700 leading-relaxed">{{ note.note_text }}</p>
+                                            <button onclick="confirmDeleteNote({{ note.id }})"
+                                                class="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded-lg">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-4 pt-4 border-t border-slate-50 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            {{ note.created_at.strftime('%B %d, %Y at %H:%M') }}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <div class="text-center py-16 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+                                        <div class="text-5xl mb-4 grayscale opacity-50">📝</div>
+                                        <h4 class="text-slate-500 font-bold">No project activity logged yet</h4>
+                                        <p class="text-slate-400 text-sm mt-1">Share an update with the team using the form above.</p>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
-                            {% if tasks %}
-                            <!-- Task Filter Bar -->
-                            <div class="px-6 py-3 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-3 items-end">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Type</label>
-                                    <select id="filter-type" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                        <option value="">All Types</option>
-                                        {% set seen_types = [] %}
-                                        {% for task in tasks %}
-                                        {% if task.task_type not in seen_types %}
-                                        {% set _ = seen_types.append(task.task_type) %}
-                                        <option value="{{ task.task_type }}">{{ task.task_type }}</option>
-                                        {% endif %}
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phase</label>
-                                    <select id="filter-phase" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                        <option value="">All Phases</option>
-                                        {% for phase in phases %}
-                                        <option value="{{ phase.phase_name }}">{{ phase.phase_name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Progress</label>
-                                    <select id="filter-progress" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                        <option value="">All</option>
-                                        <option value="0">Not Started (0%)</option>
-                                        <option value="partial">In Progress (1-99%)</option>
-                                        <option value="100">Completed (100%)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Search Task</label>
-                                    <input type="text" id="filter-search" oninput="filterTasks()" placeholder="Name or ID..." class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36">
-                                </div>
-                                <button onclick="clearTaskFilters()" class="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5 border border-slate-200 rounded hover:bg-slate-100 transition">Clear</button>
-                                <span id="filter-count" class="text-xs text-slate-400 ml-auto self-center"></span>
-                            </div>
-                            <div class="overflow-x-auto overflow-y-auto max-h-[700px]">
-                                <table class="w-full text-left border-collapse relative">
-                                    <thead
-                                        class="bg-slate-50 text-slate-500 text-xs uppercase font-bold sticky top-0 z-10 shadow-sm">
-                                        <tr>
-                                            <th class="px-6 py-3">Task ID</th>
-                                            <th class="px-6 py-3">Task</th>
-                                            <th class="px-6 py-3">Type</th>
-                                            <th class="px-6 py-3">Weight</th>
-                                            <th class="px-6 py-3">Start</th>
-                                            <th class="px-6 py-3">End</th>
-                                            <th class="px-6 py-3">Phase</th>
-                                            <th class="px-6 py-3">Resource</th>
-                                            <th class="px-6 py-3">Progress</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        {% for task in tasks %}
-                                        {% set row_phase = task.phase.phase_name if task.phase else '' %}
-                                        {% set row_resource = '' %}
-                                        {% if task.task_resources %}
-                                          {% for tr in task.task_resources %}{% set row_resource = row_resource + tr.resource.full_name + ' ' + tr.resource.nickname + ' ' %}{% endfor %}
-                                        {% elif task.assigned_resource %}
-                                          {% set row_resource = task.assigned_resource.full_name + ' ' + (task.assigned_resource.nickname or '') %}
-                                        {% endif %}
-                                        <tr class="hover:bg-slate-50 transition task-row"
-                                            data-type="{{ task.task_type }}"
-                                            data-phase="{{ row_phase }}"
-                                            data-progress="{{ task.actual_progress }}"
-                                            data-search="{{ (task.task_id or '') }} {{ task.task_name }} {{ row_resource }} {{ row_phase }}">
-                                            <td class="px-6 py-4">
-                                                <span
-                                                    class="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">
-                                                    {{ task.task_id or 'GEN' + '%03d'|format(task.id) }}
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4 font-medium text-slate-900">{{ task.task_name }}</td>
-                                            <td class="px-6 py-4">
-                                                <span
-                                                    class="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-bold">
-                                                    {{ task.task_type }}
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-slate-600">{{ task.weight_score }}</td>
-                                            <td class="px-6 py-4 text-sm text-slate-600">
-                                                {{ task.planned_start.strftime('%m/%d') if task.planned_start else '-'
-                                                }}
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-slate-600">
-                                                {{ task.planned_end.strftime('%m/%d') if task.planned_end else '-' }}
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-slate-600">
-                                                {% if task.phase %}
-                                                <span
-                                                    class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                                                    {{ task.phase.phase_name }}
-                                                </span>
-                                                {% else %}
-                                                <span class="text-slate-400 text-xs">No Phase</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-slate-600">
-                                                {% if task.task_resources %}
-                                                <span class="text-blue-600 font-semibold">
-                                                    {% for tr in task.task_resources %}
-                                                    {{ tr.resource.nickname }}{% if not loop.last %}, {% endif %}
-                                                    {% endfor %}
-                                                </span>
-                                                {% elif task.assigned_resource %}
-                                                <span class="text-blue-600 font-semibold">
-                                                    {{ task.assigned_resource.nickname or
-                                                    task.assigned_resource.full_name
-                                                    }}
-                                                </span>
-                                                {% else %}
-                                                <span class="text-xs text-slate-400">Unassigned</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <div class="flex items-center gap-2">
-                                                    <div class="flex-1 bg-slate-100 rounded-full h-2 w-24">
-                                                        <div class="{% if task.actual_progress == 100 %}bg-green-500{% elif task.actual_progress >= 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %} h-2 rounded-full"
-                                                            style="width: {{ task.actual_progress }}%"></div>
-                                                    </div>
-                                                    <a href="/tasks/{{ task.id }}/edit"
-                                                        class="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-semibold transition">
-                                                        Edit
-                                                    </a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% else %}
-                            <div class="p-12 text-center">
-                                <div class="text-4xl mb-3">📋</div>
-                                <p class="text-slate-600 mb-4">No tasks in this project yet</p>
-                                <a href="/tasks/create?project_id={{ project.id }}"
-                                    class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
-                                    + Add First Task
-                                </a>
-                            </div>
-                            {% endif %}
                         </div>
+
+                        <style>
+                            .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                            .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+                            .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+                        </style>
+                        </div>
+                    </div>
+                </div>
 
                         <!-- Weekly Snapshots -->
                         {% if snapshots %}
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-8">
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-12">
                             <h3 class="font-bold text-slate-800 mb-4">Weekly Snapshots (PB Curve Data)</h3>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left border-collapse text-sm">
@@ -739,49 +709,7 @@
                             {% endif %}
                         </div>
 
-                        <!-- Project Quick Action -->
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-8">
-                            <div class="p-6 border-b border-slate-100">
-                                <h3 class="font-bold text-slate-800">Project Quick Action</h3>
-                            </div>
-                            <div class="p-6">
-                                <!-- Add Note Form -->
-                                <form action="/projects/{{ project.id }}/notes" method="post" class="mb-6">
-                                    <div class="mb-3">
-                                        <textarea name="note_text" rows="3"
-                                            class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                                            placeholder="Add a new note..." required></textarea>
-                                    </div>
-                                    <button type="submit"
-                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
-                                        Save Note
-                                    </button>
-                                </form>
 
-                                <!-- Notes List -->
-                                <div class="space-y-3">
-                                    {% if notes %}
-                                    {% for note in notes %}
-                                    <div
-                                        class="p-4 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <p class="text-slate-700 mb-2">{{ note.note_text }}</p>
-                                            <p class="text-xs text-slate-500">({{ note.created_at.strftime('%Y/%b/%d |
-                                                %H:%M:%S') }})</p>
-                                        </div>
-                                        <button onclick="confirmDeleteNote({{ note.id }})"
-                                            class="ml-4 px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-medium transition">
-                                            Delete
-                                        </button>
-                                    </div>
-                                    {% endfor %}
-                                    {% else %}
-                                    <p class="text-slate-500 text-sm italic">No notes yet. Add your first note above.
-                                    </p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Quick Actions -->
                         <div class="mt-8 flex gap-3 flex-wrap">
@@ -1015,8 +943,7 @@
         }
 
         // Show Phase Details Modal
-        function showPhaseDetails(phaseName, startDate, endDate, duration) {
-            // Create modal if it doesn't exist
+        function showPhaseDetails(phaseName, startDate, endDate, duration, status) {
             let modal = document.getElementById('phaseDetailsModal');
             if (!modal) {
                 modal = document.createElement('div');
@@ -1028,59 +955,35 @@
                             <h4 class="text-lg font-bold text-slate-800">📅 Phase Details</h4>
                             <button onclick="closePhaseDetails()" class="text-slate-400 hover:text-slate-600 text-xl">✕</button>
                         </div>
-                        <div id="phaseDetailsContent" class="space-y-4">
-                            <!-- Content will be populated here -->
-                        </div>
+                        <div id="phaseDetailsContent" class="space-y-4"></div>
                         <div class="mt-6 flex justify-end">
-                            <button onclick="closePhaseDetails()" 
-                                class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition">
-                                Close
-                            </button>
+                            <button onclick="closePhaseDetails()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition">Close</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 document.body.appendChild(modal);
             }
-
-            // Populate modal content
             const content = document.getElementById('phaseDetailsContent');
             const weekDuration = Math.ceil(duration / 7);
+            const colorCls = status === 'completed' ? 'border-green-500 bg-green-50 text-green-800'
+                           : status === 'in_progress' ? 'border-amber-500 bg-amber-50 text-amber-800'
+                           : 'border-blue-500 bg-blue-50 text-blue-800';
             content.innerHTML = `
-                <div class="border-l-4 border-blue-500 pl-4 bg-blue-50 rounded-r-lg p-4">
-                    <h5 class="font-bold text-blue-800 text-lg">${phaseName}</h5>
+                <div class="border-l-4 ${colorCls} pl-4 rounded-r-lg p-4">
+                    <h5 class="font-bold text-lg">${phaseName}</h5>
                     <div class="mt-3 space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-600">Start Date:</span>
-                            <span class="font-medium text-slate-800">${startDate}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-600">End Date:</span>
-                            <span class="font-medium text-slate-800">${endDate}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-600">Duration:</span>
-                            <span class="font-medium text-slate-800">${duration} days (${weekDuration} weeks)</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-600">Phase Type:</span>
-                            <span class="font-medium text-slate-800">Standard Phase</span>
-                        </div>
+                        <div class="flex justify-between"><span class="text-slate-600">Start:</span><span class="font-medium">${startDate}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-600">End:</span><span class="font-medium">${endDate}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-600">Duration:</span><span class="font-medium">${duration} days (${weekDuration} weeks)</span></div>
+                        <div class="flex justify-between"><span class="text-slate-600">Status:</span><span class="font-medium capitalize">${(status || 'pending').replace('_',' ')}</span></div>
                     </div>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-4">
                     <h6 class="font-bold text-slate-700 mb-2">📊 Weekly Breakdown</h6>
                     <div class="grid grid-cols-7 gap-1 text-xs">
-                        ${Array.from({ length: weekDuration }, (_, i) =>
-                `<div class="text-center p-1 bg-blue-100 text-blue-800 rounded border">W${i + 1}</div>`
-            ).join('')}
+                        ${Array.from({length: weekDuration}, (_,i) => `<div class="text-center p-1 bg-blue-100 text-blue-800 rounded border">W${i+1}</div>`).join('')}
                     </div>
-                    <div class="text-xs text-slate-500 mt-2">
-                        This phase spans ${weekDuration} week${weekDuration > 1 ? 's' : ''} of project timeline
-                    </div>
-                </div>
-            `;
-
-            // Show modal
+                    <div class="text-xs text-slate-500 mt-2">${weekDuration} week${weekDuration>1?'s':''}</div>
+                </div>`;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }

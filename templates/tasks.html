@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Functions & Requirements | aiD_PM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-item-active {
+            border-right: 4px solid #3b82f6;
+            background: #1e293b;
+        }
+
+        .function-row:hover .action-btns {
+            opacity: 1;
+        }
+
+        .action-btns {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .form-control {
+            display: block;
+            width: 100%;
+            height: 42px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            color: #0f172a;
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        textarea.form-control {
+            height: auto;
+            min-height: 80px;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col border-r border-slate-800">
+            <div class="p-6 text-white font-bold text-xl tracking-tight border-b border-slate-800">
+                aiD_PM <span class="text-blue-500">System</span>
+            </div>
+            <nav class="flex-1 mt-4 overflow-y-auto">
+                <a href="/"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Dashboard</a>
+                <a href="/projects/list"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Projects</a>
+                <a href="/kanban"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Kanban</a>
+                <a href="/tracking"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Tracking</a>
+                <a href="/calendar-grid"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Calendar</a>
+
+                <div class="px-6 py-2 mt-4 mb-2 border-t border-slate-700"></div>
+                <a href="/management-control"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Control
+                    Center</a>
+                <a href="/phases"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Phases</a>
+                <a href="/functions"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Functions/Req</a>
+                <a href="/tasks"
+                    class="flex items-center px-6 py-3 sidebar-item-active text-white hover:bg-slate-900 hover:text-white transition">Tasks</a>
+                <a href="/issues"
+                    class="flex items-center px-6 py-3 hover:bg-slate-900 hover:text-white transition">Issues</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                v1.5 AI Powered
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Task Management</h1>
+                    <p class="text-slate-500 text-sm">Manage project tasks, effort, and execution progress
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="/tasks/download_template"
+                        class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center text-sm" title="Download CSV Template">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        Template
+                    </a>
+                    <button onclick="triggerUpload()"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Import CSV ↑
+                    </button>
+                    {% if selected_project_id %}
+                    <a href="/projects/{{ selected_project_id }}/tasks/export"
+                        class="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export CSV ↓
+                    </a>
+                    {% endif %}
+                    <form id="uploadForm" action="/tasks/upload" method="POST" enctype="multipart/form-data"
+                        class="hidden">
+                        <input type="hidden" name="project_id"
+                            value="{{ selected_project_id if selected_project_id else '' }}" id="uploadProjectId">
+                        <input type="file" id="uploadFileInput" name="file" accept=".csv" onchange="submitUpload()">
+                    </form>
+                    <button onclick="toggleCreateForm()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition">
+                        + Add Task
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+                <div class="flex flex-wrap items-end gap-6">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Project</label>
+                        <select id="project_filter" onchange="window.location.href='/tasks?project_id=' + this.value"
+                            class="w-full text-slate-900 border border-slate-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- All Projects --</option>
+                            {% for project in projects %}
+                            <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{% endif %}>
+                                {{ project.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {% if selected_project_id %}
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Type</label>
+                        <select id="filter-type" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Types</option>
+                            {% set seen_types = [] %}
+                            {% for task in tasks %}
+                            {% if task.task_type not in seen_types %}
+                            {% set _ = seen_types.append(task.task_type) %}
+                            <option value="{{ task.task_type }}">{{ task.task_type }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Phase</label>
+                        <select id="filter-phase" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Phases</option>
+                            {% for phase in phases %}
+                            <option value="{{ phase.phase_name }}">{{ phase.phase_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Progress</label>
+                        <select id="filter-progress" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All</option>
+                            <option value="0">Not Started (0%)</option>
+                            <option value="partial">In Progress (1-99%)</option>
+                            <option value="100">Completed (100%)</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Search</label>
+                        <input type="text" id="filter-search" oninput="filterTasks()" placeholder="Task Name or ID..." class="w-full border border-slate-300 text-slate-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button onclick="clearFilters()" class="px-4 py-2 text-slate-500 hover:text-slate-800 font-medium transition border border-transparent hover:border-slate-200 rounded-lg">Clear</button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Create Form (Hidden by default) -->
+            <div id="createForm" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6 hidden">
+                <h3 class="font-bold text-slate-800 mb-4">Add New Task</h3>
+                <form action="/tasks/create" method="POST" class="space-y-4">
+                    <input type="hidden" name="next_url" value="/tasks?project_id={{ selected_project_id }}">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Project *</label>
+                            <select name="project_id" required class="form-control">
+                                <option value="">-- Select Project --</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}" {% if selected_project_id==project.id %}selected{% endif %}>{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Task Type *</label>
+                            <select name="task_type" class="form-control" onchange="if(this.value === 'Other') { document.getElementById('new_task_type_container').classList.remove('hidden'); } else { document.getElementById('new_task_type_container').classList.add('hidden'); }">
+                                <option value="Requirement">Requirement</option>
+                                <option value="Dev" selected>Dev</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Procurement">Procurement</option>
+                                <option value="Fix">Fix</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <div id="new_task_type_container" class="mt-2 hidden">
+                                <input type="text" name="new_task_type" placeholder="Enter new task type" class="form-control text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Task Name *</label>
+                            <input type="text" name="task_name" required placeholder="e.g., Implement Login" class="form-control">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Estimated Effort (Hours)</label>
+                            <input type="number" name="estimated_hours" step="0.5" value="0" class="form-control">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Weight Score *</label>
+                            <input type="number" name="weight_score" step="0.1" value="1.0" required class="form-control">
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                            Create Task
+                        </button>
+                        <button type="button" onclick="toggleCreateForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium transition">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Tasks List -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800">Task List</h3>
+                    <span id="filter-count" class="text-xs text-slate-400"></span>
+                </div>
+
+                {% if tasks %}
+                <div class="p-0">
+                    <table class="w-full text-left border-collapse" id="tasks-table">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                            <tr>
+                                <th class="px-6 py-4">Task ID</th>
+                                <th class="px-6 py-4">Task Name</th>
+                                <th class="px-6 py-4">Type</th>
+                                <th class="px-6 py-4">Effort (Est/Act)</th>
+                                <th class="px-6 py-4">Progress</th>
+                                <th class="px-6 py-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for task in tasks %}
+                            <tr class="hover:bg-slate-50 transition task-row" 
+                                data-type="{{ task.task_type }}" 
+                                data-phase="{{ task.phase.phase_name if task.phase else '' }}" 
+                                data-progress="{{ task.actual_progress }}">
+                                <td class="px-6 py-4 font-mono text-xs font-bold text-slate-500">
+                                    {{ task.task_id }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-slate-800">{{ task.task_name }}</div>
+                                    <div class="text-[10px] text-slate-400">
+                                        {% if task.phase %}
+                                        <span class="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded uppercase font-bold border border-blue-100">
+                                            {{ task.phase.phase_name }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold">{{ task.task_type }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-xs">
+                                    <span class="text-slate-700 font-bold">{{ "%.1f"|format(task.estimated_hours) }}h Est.</span><br>
+                                    <span class="text-slate-400">{{ "%.1f"|format(task.actual_hours) }}h Act.</span>
+                                </td>
+                                <td class="px-6 py-4 w-48">
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex justify-between text-[10px] font-bold text-slate-500">
+                                            <span>{{ task.actual_progress|round(1) }}% Complete</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="{% if task.actual_progress == 100 %}bg-green-500{% else %}bg-blue-600{% endif %} h-full transition-all duration-500"
+                                                style="width: {{ task.actual_progress }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2 action-btns">
+                                        <a href="/tasks/{{ task.id }}/edit" class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                        </a>
+                                        <form action="/tasks/{{ task.id }}/delete" method="POST" onsubmit="return confirm('Delete this task?')">
+                                            <button type="submit" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-12 text-center">
+                    <div class="text-5xl mb-4">📋</div>
+                    <h3 class="text-lg font-bold text-slate-700 mb-2">No Tasks Found</h3>
+                    <p class="text-slate-500 mb-6">Select a project or create a new task to get started.</p>
+                    <button onclick="toggleCreateForm()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition">
+                        + Create First Task
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleCreateForm() {
+            const form = document.getElementById('createForm');
+            form.classList.toggle('hidden');
+        }
+
+        function triggerUpload() {
+            document.getElementById('uploadFileInput').click();
+        }
+
+        function submitUpload() {
+            const fileInput = document.getElementById('uploadFileInput');
+            if (fileInput.files.length > 0) {
+                document.getElementById('uploadForm').submit();
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-type').value = '';
+            document.getElementById('filter-phase').value = '';
+            document.getElementById('filter-progress').value = '';
+            document.getElementById('filter-search').value = '';
+            filterTasks();
+        }
+
+        function filterTasks() {
+            const type = document.getElementById('filter-type').value;
+            const phase = document.getElementById('filter-phase').value;
+            const progress = document.getElementById('filter-progress').value;
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const rows = document.querySelectorAll('.task-row');
+            
+            let visibleCount = 0;
+            rows.forEach(row => {
+                const rowType = row.getAttribute('data-type');
+                const rowPhase = row.getAttribute('data-phase');
+                const rowProgress = parseFloat(row.getAttribute('data-progress'));
+                const rowText = row.innerText.toLowerCase();
+                
+                let visible = true;
+                if (type && rowType !== type) visible = false;
+                if (phase && rowPhase !== phase) visible = false;
+                if (progress) {
+                    if (progress === '0' && rowProgress > 0) visible = false;
+                    if (progress === '100' && rowProgress < 100) visible = false;
+                    if (progress === 'partial' && (rowProgress === 0 || rowProgress === 100)) visible = false;
+                }
+                if (search && !rowText.includes(search)) visible = false;
+                
+                row.style.display = visible ? '' : 'none';
+                if (visible) visibleCount++;
+            });
+            
+            const countLabel = document.getElementById('filter-count');
+            if (countLabel) {
+                countLabel.innerText = `Showing ${visibleCount} of ${rows.length} tasks`;
+            }
+        }
+
+        // Initialize filters on load
+        window.addEventListener('DOMContentLoaded', filterTasks);
+    </script>
+</body>
+</html>

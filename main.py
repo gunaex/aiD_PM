@@ -1207,6 +1207,7 @@ async def update_function(
     priority: Optional[str] = Form(None),
     status: Optional[str] = Form(None),
     estimated_hours: Optional[float] = Form(None),
+    actual_progress: Optional[float] = Form(None),
     db: Session = Depends(get_db)
 ):
     """Update function details"""
@@ -1229,6 +1230,8 @@ async def update_function(
         function.status = status
     if estimated_hours is not None:
         function.estimated_hours = estimated_hours
+    if actual_progress is not None:
+        function.actual_progress = actual_progress
     
     function.updated_at = datetime.datetime.now()
     db.commit()
@@ -1255,6 +1258,7 @@ async def get_function_detail(function_id: int, db: Session = Depends(get_db)):
         "priority": function.priority,
         "status": function.status,
         "estimated_hours": function.estimated_hours,
+        "actual_progress": function.actual_progress,
         "description": function.description,
         "project_id": function.project_id,
         "parent_function_id": function.parent_function_id
@@ -1671,6 +1675,26 @@ async def create_project_page(request: Request):
         "request": request
     })
 
+@app.get("/tasks", response_class=HTMLResponse)
+async def tasks_page(request: Request, project_id: Optional[int] = None, db: Session = Depends(get_db)):
+    """Tasks management page"""
+    projects = db.query(models.Project).all()
+    tasks = []
+    phases = []
+    
+    selected_project_id = project_id
+    if selected_project_id:
+        tasks = db.query(models.Task).filter(models.Task.project_id == selected_project_id).all()
+        phases = db.query(models.ProjectPhase).filter(models.ProjectPhase.project_id == selected_project_id).all()
+        
+    return templates.TemplateResponse("tasks.html", {
+        "request": request,
+        "projects": projects,
+        "selected_project_id": selected_project_id,
+        "tasks": tasks,
+        "phases": phases
+    })
+
 @app.get("/tasks/create", response_class=HTMLResponse)
 async def create_task_page(request: Request, project_id: int, db: Session = Depends(get_db)):
     """หน้าฟอร์มสร้าง Task ใหม่"""
@@ -2019,6 +2043,77 @@ async def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.delete(task)
     db.commit()
     return RedirectResponse(url=f"/projects/{project_id}/details", status_code=303)
+
+@app.get("/api/tasks/detail/{task_id}")
+async def get_task_detail(task_id: int, db: Session = Depends(get_db)):
+    """API endpoint to get full details of a single task"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Task doesn't have a status field directly right now, handle safely
+    status = getattr(task, "status", "not_started")
+    priority = getattr(task, "priority", "medium")
+    description = getattr(task, "description", "")
+    
+    return {
+        "id": task.id,
+        "task_id": task.task_id,
+        "task_name": task.task_name,
+        "task_type": task.task_type,
+        "weight_score": task.weight_score,
+        "status": status,
+        "priority": priority,
+        "description": description,
+        "estimated_hours": task.estimated_hours,
+        "actual_progress": task.actual_progress,
+        "project_id": task.project_id
+    }
+
+@app.post("/tasks/{task_id}/update")
+async def update_task_api(
+    task_id: int,
+    task_name: Optional[str] = Form(None),
+    task_type: Optional[str] = Form(None),
+    new_task_type: Optional[str] = Form(None),
+    weight_score: Optional[float] = Form(None),
+    actual_progress: Optional[float] = Form(None),
+    estimated_hours: Optional[float] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Update task details from Tasks view modal"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if task_type == "Other" and new_task_type and new_task_type.strip():
+        task_type = new_task_type.strip()
+        
+    if task_name is not None and task_name.strip():
+        task.task_name = task_name.strip()
+    if task_type is not None:
+        task.task_type = task_type
+    if weight_score is not None:
+        task.weight_score = weight_score
+    if actual_progress is not None:
+        task.actual_progress = actual_progress
+    if estimated_hours is not None:
+        task.estimated_hours = estimated_hours
+        
+    db.commit()
+    return RedirectResponse(url=f"/tasks?project_id={task.project_id}", status_code=303)
+
+@app.post("/tasks/{task_id}/delete")
+async def delete_task_post(task_id: int, db: Session = Depends(get_db)):
+    """Delete Task via POST"""
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    project_id = task.project_id
+    db.delete(task)
+    db.commit()
+    return RedirectResponse(url=f"/tasks?project_id={project_id}", status_code=303)
 
 # ==================== CSV Import/Export Endpoints ====================
 
