@@ -201,7 +201,8 @@
                                 onchange="handleFunctionChange(this.value)">
                                 <option value="">-- No Function --</option>
                                 {% for func in functions %}
-                                <option value="{{ func.id }}">{{ func.function_code }}: {{ func.function_name }}
+                                <option value="{{ func.id }}" {% if func.status == 'completed' %}disabled class="text-slate-400 bg-slate-50"{% endif %}>
+                                    {{ func.function_code }}: {{ func.function_name }} {% if func.status == 'completed' %}(Completed){% endif %}
                                 </option>
                                 {% endfor %}
                                 <option value="custom">✏️ Enter Custom Function</option>

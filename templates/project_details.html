@@ -140,53 +140,64 @@
                 <p class="text-xs text-slate-500 mt-2">Calculated from task weight scores</p>
             </div>
 
-            <!-- Requirement Progress Summary -->
+            <!-- Functions/Req Progress Summary -->
             {% if functions %}
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-slate-800 text-xl">Requirement Progress</h3>
+                    <h3 class="font-bold text-slate-800 text-xl">Functions/Req Progress</h3>
                     <a href="/functions?project_id={{ project.id }}"
                         class="text-sm text-blue-600 hover:text-blue-800 font-medium">Full Requirement View →</a>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {% for func in functions if not func.parent_function_id %}
-                    <div class="border border-slate-100 rounded-lg p-4 bg-slate-50">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <span class="text-[10px] font-mono font-bold text-slate-400 block mb-1">{{
-                                    func.function_code }}</span>
-                                <h4 class="font-bold text-slate-800 text-sm">{{ func.function_name }}</h4>
-                            </div>
-                            <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold
-                                {% if func.status == 'completed' %}bg-green-100 text-green-700
-                                {% elif func.status == 'in_progress' %}bg-yellow-100 text-yellow-700
-                                {% else %}bg-slate-200 text-slate-600{% endif %}">
-                                {{ func.status.replace('_', ' ') }}
-                            </span>
-                        </div>
-
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {% for cat, cat_funcs in functions | groupby('category') %}
+                    {% set ns = namespace(total_est=0, total_act=0, total_progress=0, func_count=0) %}
+                    
+                    {% for func in cat_funcs %}
+                        {% set ns.func_count = ns.func_count + 1 %}
                         {% set linked_tasks = func.tasks %}
                         {% set total_tasks = linked_tasks|length %}
-                        {% if total_tasks > 0 %}
-                        {% set total_progress = 0 %}
-                        {% for t in linked_tasks %}{% set total_progress = total_progress + t.actual_progress %}{%
-                        endfor %}
-                        {% set avg_p = (total_progress / total_tasks)|round %}
-                        {% set total_est = linked_tasks|sum(attribute='estimated_hours') %}
-                        {% set total_act = linked_tasks|sum(attribute='actual_hours') %}
+                        
+                        {% if func.status == 'completed' %}
+                            {% set ns.total_progress = ns.total_progress + 100 %}
+                            {% set ns.total_est = ns.total_est + (linked_tasks|sum(attribute='estimated_hours') if total_tasks > 0 else func.estimated_hours) %}
+                            {% set ns.total_act = ns.total_act + (linked_tasks|sum(attribute='actual_hours') if total_tasks > 0 else func.actual_hours) %}
+                        {% elif total_tasks > 0 %}
+                            {% set func_task_progress = 0 %}
+                            {% for t in linked_tasks %}{% set func_task_progress = func_task_progress + t.actual_progress %}{% endfor %}
+                            {% set ns.total_progress = ns.total_progress + (func_task_progress / total_tasks) %}
+                            {% set ns.total_est = ns.total_est + linked_tasks|sum(attribute='estimated_hours') %}
+                            {% set ns.total_act = ns.total_act + linked_tasks|sum(attribute='actual_hours') %}
                         {% else %}
-                        {% set avg_p = 100 if func.status == 'completed' else 0 %}
-                        {% set total_est = func.estimated_hours %}
-                        {% set total_act = func.actual_hours %}
+                            {% set ns.total_est = ns.total_est + func.estimated_hours %}
+                            {% set ns.total_act = ns.total_act + func.actual_hours %}
                         {% endif %}
-
-                        <div class="space-y-3">
-                            <div class="w-full bg-slate-200 rounded-full h-1.5">
-                                <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ avg_p }}%"></div>
+                    {% endfor %}
+                    
+                    {% set avg_p = (ns.total_progress / ns.func_count)|round if ns.func_count > 0 else 0 %}
+                    
+                    <div class="border border-slate-100 rounded-2xl p-5 bg-gradient-to-br from-slate-50 to-slate-100 hover:shadow-md transition-all duration-200 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 bg-white shadow-sm text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                </svg>
                             </div>
-                            <div class="flex justify-between text-[10px] text-slate-500 font-bold uppercase">
-                                <span>{{ avg_p }}% Complete</span>
-                                <span>{{ "%.1f"|format(total_est) }}h / {{ "%.1f"|format(total_act) }}h</span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-white px-2 py-1 rounded-full shadow-sm">{{ ns.func_count }} Items</span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-3 truncate" title="{{ cat or 'Uncategorized' }}">{{ cat or 'Uncategorized' }}</h4>
+                        <div class="space-y-2 mt-auto">
+                            <div class="flex justify-between items-end">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Progress</span>
+                                    <span class="text-lg font-bold {% if avg_p == 100 %}text-green-600{% elif avg_p > 0 %}text-blue-600{% else %}text-slate-500{% endif %}">{{ avg_p }}%</span>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Est. Effort</span>
+                                    <span class="text-sm font-bold text-slate-600">{{ "%.1f"|format(ns.total_est) }}h</span>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                <div class="{% if avg_p == 100 %}bg-green-500{% else %}bg-blue-500{% endif %} h-1.5 rounded-full transition-all duration-500" style="width: {{ avg_p }}%"></div>
                             </div>
                         </div>
                     </div>
@@ -476,6 +487,46 @@
                                 </div>
                             </div>
                             {% if tasks %}
+                            <!-- Task Filter Bar -->
+                            <div class="px-6 py-3 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-3 items-end">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Type</label>
+                                    <select id="filter-type" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                        <option value="">All Types</option>
+                                        {% set seen_types = [] %}
+                                        {% for task in tasks %}
+                                        {% if task.task_type not in seen_types %}
+                                        {% set _ = seen_types.append(task.task_type) %}
+                                        <option value="{{ task.task_type }}">{{ task.task_type }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phase</label>
+                                    <select id="filter-phase" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                        <option value="">All Phases</option>
+                                        {% for phase in phases %}
+                                        <option value="{{ phase.phase_name }}">{{ phase.phase_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Progress</label>
+                                    <select id="filter-progress" onchange="filterTasks()" class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                        <option value="">All</option>
+                                        <option value="0">Not Started (0%)</option>
+                                        <option value="partial">In Progress (1-99%)</option>
+                                        <option value="100">Completed (100%)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Search Task</label>
+                                    <input type="text" id="filter-search" oninput="filterTasks()" placeholder="Name or ID..." class="border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36">
+                                </div>
+                                <button onclick="clearTaskFilters()" class="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5 border border-slate-200 rounded hover:bg-slate-100 transition">Clear</button>
+                                <span id="filter-count" class="text-xs text-slate-400 ml-auto self-center"></span>
+                            </div>
                             <div class="overflow-x-auto overflow-y-auto max-h-[700px]">
                                 <table class="w-full text-left border-collapse relative">
                                     <thead
@@ -494,7 +545,18 @@
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
                                         {% for task in tasks %}
-                                        <tr class="hover:bg-slate-50 transition">
+                                        {% set row_phase = task.phase.phase_name if task.phase else '' %}
+                                        {% set row_resource = '' %}
+                                        {% if task.task_resources %}
+                                          {% for tr in task.task_resources %}{% set row_resource = row_resource + tr.resource.full_name + ' ' + tr.resource.nickname + ' ' %}{% endfor %}
+                                        {% elif task.assigned_resource %}
+                                          {% set row_resource = task.assigned_resource.full_name + ' ' + (task.assigned_resource.nickname or '') %}
+                                        {% endif %}
+                                        <tr class="hover:bg-slate-50 transition task-row"
+                                            data-type="{{ task.task_type }}"
+                                            data-phase="{{ row_phase }}"
+                                            data-progress="{{ task.actual_progress }}"
+                                            data-search="{{ (task.task_id or '') }} {{ task.task_name }} {{ row_resource }} {{ row_phase }}">
                                             <td class="px-6 py-4">
                                                 <span
                                                     class="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">
@@ -874,6 +936,42 @@
                 resultDiv.className = 'p-4 rounded-lg text-sm bg-red-50 text-red-800 border border-red-200';
                 resultDiv.textContent = `Error: ${error.message}`;
             }
+        }
+
+        function filterTasks() {
+            const typeF     = document.getElementById('filter-type')?.value || '';
+            const phaseF    = document.getElementById('filter-phase')?.value || '';
+            const progressF = document.getElementById('filter-progress')?.value || '';
+            const searchF   = (document.getElementById('filter-search')?.value || '').toLowerCase();
+            const rows = document.querySelectorAll('.task-row');
+            let visible = 0;
+            rows.forEach(row => {
+                const type     = row.dataset.type || '';
+                const phase    = row.dataset.phase || '';
+                const progress = parseFloat(row.dataset.progress || 0);
+                const search   = (row.dataset.search || '').toLowerCase();
+                let show = true;
+                if (typeF && type !== typeF) show = false;
+                if (phaseF && phase !== phaseF) show = false;
+                if (progressF === '0' && progress !== 0) show = false;
+                if (progressF === 'partial' && (progress <= 0 || progress >= 100)) show = false;
+                if (progressF === '100' && progress < 100) show = false;
+                if (searchF && !search.includes(searchF)) show = false;
+                row.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+            const countEl = document.getElementById('filter-count');
+            if (countEl) countEl.textContent = `${visible} of ${rows.length} tasks`;
+        }
+
+        function clearTaskFilters() {
+            ['filter-type','filter-phase','filter-progress'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const s = document.getElementById('filter-search');
+            if (s) s.value = '';
+            filterTasks();
         }
 
         async function takeSnapshot() {

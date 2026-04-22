@@ -1021,12 +1021,22 @@ async def phases_page(request: Request, project_id: Optional[int] = None, db: Se
         query = query.filter(models.ProjectPhase.project_id == project_id)
     
     phases = query.order_by(models.ProjectPhase.project_id, models.ProjectPhase.phase_order).all()
-    
+
+    # Calculate timeline boundaries for Gantt
+    starts = [p.planned_start for p in phases if p.planned_start]
+    ends   = [p.planned_end   for p in phases if p.planned_end]
+    timeline_start = (min(starts) - datetime.timedelta(days=7)) if starts else datetime.date.today()
+    timeline_end   = (max(ends)   + datetime.timedelta(days=7)) if ends   else timeline_start + datetime.timedelta(days=180)
+    months_data    = get_timeline_months(timeline_start, timeline_end)
+
     return templates.TemplateResponse("phases.html", {
         "request": request,
         "projects": projects,
         "phases": phases,
-        "selected_project_id": project_id
+        "selected_project_id": project_id,
+        "timeline_start": timeline_start,
+        "timeline_end": timeline_end,
+        "months_data": months_data,
     })
 
 @app.post("/phases/create")
@@ -1061,6 +1071,8 @@ async def update_phase(
     planned_start: Optional[str] = Form(None),
     planned_end: Optional[str] = Form(None),
     phase_order: Optional[int] = Form(None),
+    status: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """Update phase details via API"""
@@ -1069,6 +1081,66 @@ async def update_phase(
         raise HTTPException(status_code=404, detail="Phase not found")
     
     # Update fields if provided
+    if phase_name is not None and phase_name.strip():
+        phase.phase_name = phase_name.strip()
+    if planned_start is not None:
+        phase.planned_start = datetime.datetime.strptime(planned_start, '%Y-%m-%d').date() if planned_start else None
+    if planned_end is not None:
+        phase.planned_end = datetime.datetime.strptime(planned_end, '%Y-%m-%d').date() if planned_end else None
+    if phase_order is not None:
+        phase.phase_order = phase_order
+    if status is not None:
+        phase.status = status
+    if description is not None:
+        phase.description = description
+    
+    db.commit()
+    db.refresh(phase)
+    
+    return {
+        "status": "success",
+        "phase_id": phase_id,
+        "phase_name": phase.phase_name,
+        "planned_start": phase.planned_start.strftime('%Y-%m-%d') if phase.planned_start else None,
+        "planned_end": phase.planned_end.strftime('%Y-%m-%d') if phase.planned_end else None
+    }
+
+@app.post("/phases/{phase_id}/delete")
+async def delete_phase(phase_id: int, db: Session = Depends(get_db)):
+    """Delete a phase"""
+    phase = db.query(models.ProjectPhase).filter(models.ProjectPhase.id == phase_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Phase not found")
+    project_id = phase.project_id
+    db.delete(phase)
+    db.commit()
+    return {"status": "success", "project_id": project_id}
+
+@app.post("/phases/{phase_id}/move")
+async def move_phase(phase_id: int, direction: str = Form(...), db: Session = Depends(get_db)):
+    """Move a phase up or down in order within its project"""
+    phase = db.query(models.ProjectPhase).filter(models.ProjectPhase.id == phase_id).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Phase not found")
+
+    siblings = db.query(models.ProjectPhase).filter(
+        models.ProjectPhase.project_id == phase.project_id
+    ).order_by(models.ProjectPhase.phase_order).all()
+
+    current_idx = next((i for i, p in enumerate(siblings) if p.id == phase_id), None)
+    if current_idx is None:
+        raise HTTPException(status_code=400, detail="Phase not found in project")
+
+    if direction == "up" and current_idx > 0:
+        swap = siblings[current_idx - 1]
+    elif direction == "down" and current_idx < len(siblings) - 1:
+        swap = siblings[current_idx + 1]
+    else:
+        return {"status": "no_change"}
+
+    phase.phase_order, swap.phase_order = swap.phase_order, phase.phase_order
+    db.commit()
+    return {"status": "success"}
 
 # ==================== Functions/Requirements Routes ====================
 
@@ -1097,6 +1169,7 @@ async def create_function(
     parent_function_id: Optional[int] = Form(None),
     description: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
+    new_category: Optional[str] = Form(None),
     priority: str = Form("medium"),
     estimated_hours: float = Form(0.0),
     db: Session = Depends(get_db)
@@ -1105,6 +1178,9 @@ async def create_function(
     # Generate function code
     function_code = generate_function_code(project_id, db)
     
+    if category == "Other" and new_category and new_category.strip():
+        category = new_category.strip()
+        
     function = models.ProjectFunction(
         project_id=project_id,
         parent_function_id=parent_function_id if parent_function_id else None,
@@ -1127,6 +1203,7 @@ async def update_function(
     function_name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
+    new_category: Optional[str] = Form(None),
     priority: Optional[str] = Form(None),
     status: Optional[str] = Form(None),
     estimated_hours: Optional[float] = Form(None),
@@ -1136,6 +1213,9 @@ async def update_function(
     function = db.query(models.ProjectFunction).filter(models.ProjectFunction.id == function_id).first()
     if not function:
         raise HTTPException(status_code=404, detail="Function not found")
+    
+    if category == "Other" and new_category and new_category.strip():
+        category = new_category.strip()
     
     if function_name is not None and function_name.strip():
         function.function_name = function_name.strip()
@@ -1218,8 +1298,11 @@ async def get_functions_api(project_id: int, db: Session = Depends(get_db)):
         # Calculate progress
         tasks = db.query(models.Task).filter(models.Task.function_id == func.id).all()
         total_tasks = len(tasks)
-        completed_tasks = sum(1 for t in tasks if t.actual_progress >= 100)
-        progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        if func.status == 'completed':
+            progress = 100.0
+        else:
+            completed_tasks = sum(1 for t in tasks if t.actual_progress >= 100)
+            progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
         
         result.append({
             "id": func.id,
@@ -1235,25 +1318,97 @@ async def get_functions_api(project_id: int, db: Session = Depends(get_db)):
         })
     
     return {"functions": result}
-    if phase_name is not None and phase_name.strip():
-        phase.phase_name = phase_name.strip()
-    if planned_start is not None:
-        phase.planned_start = datetime.datetime.strptime(planned_start, '%Y-%m-%d').date() if planned_start else None
-    if planned_end is not None:
-        phase.planned_end = datetime.datetime.strptime(planned_end, '%Y-%m-%d').date() if planned_end else None
-    if phase_order is not None:
-        phase.phase_order = phase_order
+
+@app.get("/functions/download_template")
+async def download_function_template():
+    """Download CSV template for bulk upload"""
+    import csv
+    from io import StringIO
+    from fastapi.responses import StreamingResponse
     
-    db.commit()
-    db.refresh(phase)
+    csv_data = [
+        ["function_name", "category", "priority", "estimated_hours", "description"],
+        ["User Login", "Function", "high", "5.0", "Allow users to login via email and password"],
+        ["Export Report", "Requirement", "medium", "8.0", "Export data to Excel"],
+    ]
     
-    return {
-        "status": "success",
-        "phase_id": phase_id,
-        "phase_name": phase.phase_name,
-        "planned_start": phase.planned_start.strftime('%Y-%m-%d') if phase.planned_start else None,
-        "planned_end": phase.planned_end.strftime('%Y-%m-%d') if phase.planned_end else None
-    }
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerows(csv_data)
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=function_template.csv"}
+    )
+
+@app.post("/functions/upload")
+async def upload_functions(
+    project_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Bulk upload functions from CSV"""
+    import csv
+    from io import StringIO
+    
+    content = await file.read()
+    decoded = content.decode("utf-8-sig")
+    csv_reader = csv.DictReader(StringIO(decoded))
+    
+    # Pre-compute next available FURE number to avoid UNIQUE constraint errors
+    # when generate_function_code() can't see yet-uncommitted rows
+    existing_functions = db.query(models.ProjectFunction).all()
+    used_numbers = set()
+    for f in existing_functions:
+        if f.function_code and f.function_code.startswith("FURE-"):
+            try:
+                used_numbers.add(int(f.function_code.split("-")[1]))
+            except (ValueError, IndexError):
+                pass
+    next_num = max(used_numbers) + 1 if used_numbers else 1
+
+    rows_to_add = []
+    for row in csv_reader:
+        function_name = row.get("function_name", "").strip()
+        if not function_name:
+            continue
+            
+        category = row.get("category", "Function").strip()
+        priority = row.get("priority", "medium").strip()
+        
+        try:
+            estimated_hours = float(row.get("estimated_hours", 0))
+        except ValueError:
+            estimated_hours = 0.0
+            
+        description = row.get("description", "").strip()
+        
+        # Generate code locally without re-querying DB
+        while next_num in used_numbers:
+            next_num += 1
+        function_code = f"FURE-{next_num:03d}"
+        used_numbers.add(next_num)
+        next_num += 1
+        
+        rows_to_add.append(models.ProjectFunction(
+            project_id=project_id,
+            function_code=function_code,
+            function_name=function_name,
+            category=category,
+            priority=priority,
+            estimated_hours=estimated_hours,
+            description=description,
+            status="not_started"
+        ))
+
+    if rows_to_add:
+        db.add_all(rows_to_add)
+        db.commit()
+        
+    return RedirectResponse(url=f"/functions?project_id={project_id}", status_code=303)
+
 
 # ==================== AI Assistant Routes ====================
 
@@ -1398,9 +1553,21 @@ async def projects_list_page(request: Request, db: Session = Depends(get_db)):
     projects = db.query(models.Project).all()
     current_week = datetime.date.today().isocalendar()[1]
     
+    # Build a separate dict to avoid setting attributes on ORM objects
+    project_progress = {}
+    for project in projects:
+        tasks = db.query(models.Task).filter(models.Task.project_id == project.id).all()
+        total_weight = sum(t.weight_score for t in tasks)
+        if total_weight > 0:
+            weighted_progress = sum((t.actual_progress / 100) * t.weight_score for t in tasks)
+            project_progress[project.id] = round((weighted_progress / total_weight) * 100, 1)
+        else:
+            project_progress[project.id] = 0.0
+    
     return templates.TemplateResponse("projects.html", {
         "request": request,
         "projects": projects,
+        "project_progress": project_progress,
         "current_week": current_week
     })
 
@@ -1722,7 +1889,22 @@ async def create_task_form(
     
     # Handle function_id validation
     validated_function_id = None
-    if function_id and function_id.strip() and function_id != "custom":
+    if function_id == "custom" and function_text and function_text.strip():
+        function_code = generate_function_code(project_id, db)
+        new_func = models.ProjectFunction(
+            project_id=project_id,
+            function_code=function_code,
+            function_name=function_text.strip(),
+            category="Function",
+            priority="medium",
+            estimated_hours=0.0,
+            status="not_started"
+        )
+        db.add(new_func)
+        db.commit()
+        db.refresh(new_func)
+        validated_function_id = new_func.id
+    elif function_id and function_id.strip() and function_id != "custom":
         try:
             validated_function_id = int(function_id)
         except ValueError:
