@@ -7,19 +7,31 @@
     <title>{{ project.name }} | aiD_PM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        .sidebar-item-active { border-right: 4px solid #3b82f6; background: #1e293b; }
+        
+        @media print {
+            @page { size: landscape; margin: 1cm; }
+            aside, .no-print, button, a[href^="/"], .flex.gap-2.flex-wrap, form, .breadcrumb-container { display: none !important; }
+            main { padding: 0 !important; margin: 0 !important; overflow: visible !important; width: 100% !important; height: auto !important; position: static !important; }
+            .bg-slate-50 { background-color: white !important; }
+            .bg-white { border: 1px solid #e2e8f0 !important; margin-bottom: 20px !important; break-inside: avoid; }
+            .shadow-sm, .shadow-xl { box-shadow: none !important; }
+            #reportHeader { display: block !important; }
+            .overflow-x-auto { overflow: visible !important; }
+            .min-w-\[1200px\], .min-w-\[1400px\] { min-width: 100% !important; width: 100% !important; }
+            body { overflow: visible !important; }
+            .h-screen { height: auto !important; }
+            .grid { display: block !important; }
+            .grid-cols-1, .grid-cols-2, .grid-cols-4 { display: block !important; }
+            .grid-cols-1 > div, .grid-cols-2 > div, .grid-cols-4 > div { width: 100% !important; margin-bottom: 1rem !important; }
         }
-
-        .sidebar-item-active {
-            border-right: 4px solid #3b82f6;
-            background: #1e293b;
-        }
+        
+        #reportHeader { display: none; margin-bottom: 1.5rem; }
     </style>
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
 <body class="bg-slate-900 text-slate-100 font-sans h-screen overflow-hidden">
@@ -61,8 +73,24 @@
 
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto p-8 bg-slate-50 min-h-full">
+            <!-- Report Header (PDF Capture) -->
+            <div id="reportHeader" style="display:none; margin-bottom:1.5rem; background:linear-gradient(135deg,#1e293b 0%,#334155 100%); color:white; padding:1.5rem 2rem; border-radius:0.75rem; border:1px solid #475569;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:4px;">Weekly Status Report</div>
+                        <h1 style="font-size:26px;font-weight:900;margin:0 0 4px 0;color:white;">Week Report</h1>
+                        <p style="font-size:13px;color:#cbd5e1;margin:0;">Report as of <span id="reportDate" style="color:#93c5fd;font-weight:700;"></span></p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:4px;">Project</div>
+                        <div style="font-size:16px;font-weight:700;color:white;">{{ project.name }}</div>
+                        <div style="font-size:13px;color:#94a3b8;">{{ project.customer or 'Internal' }}</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Breadcrumb -->
-            <div class="flex items-center gap-2 text-sm mb-6">
+            <div class="flex items-center gap-2 text-sm mb-6 breadcrumb-container">
                 <a href="/" class="text-blue-600 hover:underline">Dashboard</a>
                 <span class="text-slate-400">→</span>
                 <a href="/projects/list" class="text-blue-600 hover:underline">Projects</a>
@@ -104,6 +132,13 @@
                         class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-sm font-medium transition">
                         History
                     </a>
+                    <button id="pdfExportBtn" onclick="exportToPDF()"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export PDF
+                    </button>
                 </div>
             </div>
 
@@ -535,6 +570,75 @@
                             </div>
                         </div>
 
+                        <!-- Issues Management -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+                            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                                <h3 class="font-bold text-slate-800">Project Issues</h3>
+                                <a href="/issues?project_id={{ project.id }}"
+                                    class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                    Manage Issues →
+                                </a>
+                            </div>
+                            {% if issues %}
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
+                                        <tr>
+                                            <th class="px-6 py-3">Status</th>
+                                            <th class="px-6 py-3">Priority</th>
+                                            <th class="px-6 py-3">Description</th>
+                                            <th class="px-6 py-3">Owner</th>
+                                            <th class="px-6 py-3">Due Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        {% for issue in issues %}
+                                        <tr class="hover:bg-slate-50 transition">
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-1 rounded text-xs font-bold
+                                        {% if issue.status == 'Open' %}bg-red-100 text-red-700
+                                        {% elif issue.status == 'In Progress' %}bg-yellow-100 text-yellow-700
+                                        {% else %}bg-green-100 text-green-700{% endif %}">
+                                                    {{ issue.status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-1 rounded text-xs font-bold
+                                        {% if issue.priority == 'High' %}bg-red-50 text-red-600
+                                        {% elif issue.priority == 'Medium' %}bg-orange-50 text-orange-600
+                                        {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                                    {{ issue.priority }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-slate-700 max-w-xs truncate">
+                                                {{ issue.issue_description }}
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-slate-600">
+                                                {% if issue.pic_resource %}
+                                                {{ issue.pic_resource.nickname or issue.pic_resource.full_name }}
+                                                {% else %}
+                                                <span class="text-slate-400 italic">No PIC</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-slate-600">
+                                                {{ issue.due_date.strftime('%Y/%m/%d') if issue.due_date else '-' }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="p-8 text-center">
+                                <p class="text-slate-500 mb-4">No issues reported for this project</p>
+                                <a href="/issues/create?project_id={{ project.id }}"
+                                    class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition">
+                                    + Report Issue
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+
                         <!-- Project Notes Card -->
                         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-12">
                             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -639,77 +743,6 @@
                             </div>
                         </div>
                         {% endif %}
-
-                        <!-- Issues Management -->
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-8">
-                            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                                <h3 class="font-bold text-slate-800">Project Issues</h3>
-                                <a href="/issues?project_id={{ project.id }}"
-                                    class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                    Manage Issues →
-                                </a>
-                            </div>
-                            {% if issues %}
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left border-collapse">
-                                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-bold">
-                                        <tr>
-                                            <th class="px-6 py-3">Status</th>
-                                            <th class="px-6 py-3">Priority</th>
-                                            <th class="px-6 py-3">Description</th>
-                                            <th class="px-6 py-3">Owner</th>
-                                            <th class="px-6 py-3">Due Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        {% for issue in issues %}
-                                        <tr class="hover:bg-slate-50 transition">
-                                            <td class="px-6 py-4">
-                                                <span class="px-2 py-1 rounded text-xs font-bold
-                                        {% if issue.status == 'Open' %}bg-red-100 text-red-700
-                                        {% elif issue.status == 'In Progress' %}bg-yellow-100 text-yellow-700
-                                        {% else %}bg-green-100 text-green-700{% endif %}">
-                                                    {{ issue.status }}
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <span class="px-2 py-1 rounded text-xs font-bold
-                                        {% if issue.priority == 'High' %}bg-red-50 text-red-600
-                                        {% elif issue.priority == 'Medium' %}bg-orange-50 text-orange-600
-                                        {% else %}bg-slate-100 text-slate-600{% endif %}">
-                                                    {{ issue.priority }}
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-slate-700 max-w-xs truncate">
-                                                {{ issue.issue_description }}
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-slate-600">
-                                                {% if issue.pic_resource %}
-                                                {{ issue.pic_resource.nickname or issue.pic_resource.full_name }}
-                                                {% else %}
-                                                <span class="text-slate-400 italic">No PIC</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="px-6 py-4 text-sm text-slate-600">
-                                                {{ issue.due_date.strftime('%Y/%m/%d') if issue.due_date else '-' }}
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% else %}
-                            <div class="p-8 text-center">
-                                <p class="text-slate-500 mb-4">No issues reported for this project</p>
-                                <a href="/issues/create?project_id={{ project.id }}"
-                                    class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition">
-                                    + Report Issue
-                                </a>
-                            </div>
-                            {% endif %}
-                        </div>
-
-
 
                         <!-- Quick Actions -->
                         <div class="mt-8 flex gap-3 flex-wrap">
@@ -1074,6 +1107,165 @@
             } catch (error) {
                 console.error('Error deleting note:', error);
                 alert('An error occurred while deleting the note');
+            }
+        }
+
+        // Export to PDF — full-page screen-capture via html2canvas + jsPDF
+        async function exportToPDF() {
+            const btn = document.getElementById('pdfExportBtn');
+            if (!btn) return;
+            const btnOrig = btn.innerHTML;
+            btn.innerHTML = '<svg class="animate-spin h-4 w-4 inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Generating...';
+            btn.disabled = true;
+
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // Show the Week Report banner
+            const rh = document.getElementById('reportHeader');
+            rh.style.display = 'block';
+            document.getElementById('reportDate').textContent = dateStr;
+
+            // --- Elements to hide during capture ---
+            const toHide = [
+                ...document.querySelectorAll('.breadcrumb-container, #weeklyTimeline, aside'),
+                document.querySelector('div.flex.gap-2.flex-wrap'),
+                document.querySelector('form[action*="notes"]'),
+                document.querySelector('.mt-8.flex.gap-3.flex-wrap'),
+            ].filter(Boolean);
+            toHide.forEach(el => { el._pdfOrig = el.style.display; el.style.display = 'none'; });
+
+            // --- Expand main to its full scroll height ---
+            const mainEl = document.querySelector('main');
+            const wrapper = document.querySelector('.flex.h-full');
+            const body = document.body;
+            const html = document.documentElement;
+
+            const saved = {
+                mainOverflow:   mainEl.style.overflow,
+                mainHeight:     mainEl.style.height,
+                mainMaxHeight:  mainEl.style.maxHeight,
+                mainFlex:       mainEl.style.flex,
+                mainPos:        mainEl.style.position,
+                wrapperHeight:  wrapper ? wrapper.style.height : '',
+                wrapperOverflow:wrapper ? wrapper.style.overflow : '',
+                bodyOverflow:   body.style.overflow,
+                htmlOverflow:   html.style.overflow,
+                scrollTop:      mainEl.scrollTop,
+            };
+
+            mainEl.style.overflow    = 'visible';
+            mainEl.style.height      = 'auto';
+            mainEl.style.maxHeight   = 'none';
+            mainEl.style.flex        = 'none';
+            mainEl.style.position    = 'static';
+            mainEl.style.width       = '100%';
+            if (wrapper) { wrapper.style.height = 'auto'; wrapper.style.overflow = 'visible'; }
+            body.style.overflow      = 'visible';
+            html.style.overflow      = 'visible';
+            mainEl.scrollTop         = 0;
+
+            // Expand any inner scrollable containers
+            const innerScrollables = mainEl.querySelectorAll('.custom-scrollbar, [class*="overflow-y-auto"]');
+            innerScrollables.forEach(el => {
+                el._pdfOrigInner = el.style.cssText;
+                el.style.overflow  = 'visible';
+                el.style.maxHeight = 'none';
+                el.style.height    = 'auto';
+            });
+
+            if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+            }
+            await new Promise(r => setTimeout(r, 250));
+
+            const captureW  = mainEl.scrollWidth;
+            const captureH  = mainEl.scrollHeight;
+
+            try {
+                const canvas = await html2canvas(mainEl, {
+                    scale:       1.15,
+                    useCORS:     true,
+                    allowTaint:  true,
+                    logging:     false,
+                    backgroundColor: '#f8fafc',
+                    width:       captureW,
+                    height:      captureH,
+                    windowWidth: captureW,
+                    windowHeight: captureH,
+                    scrollX:     0,
+                    scrollY:     0,
+                });
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const pgW = pdf.internal.pageSize.getWidth();
+                const pgH = pdf.internal.pageSize.getHeight();
+
+                // Slice canvas per page to avoid text clipping artifacts on page boundaries
+                const pxPerMm = canvas.width / pgW;
+                const pageHeightPx = Math.floor(pgH * pxPerMm);
+                let renderedHeightPx = 0;
+                let pageIndex = 0;
+
+                while (renderedHeightPx < canvas.height) {
+                    const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeightPx);
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = sliceHeightPx;
+
+                    const pageCtx = pageCanvas.getContext('2d');
+                    pageCtx.drawImage(
+                        canvas,
+                        0,
+                        renderedHeightPx,
+                        canvas.width,
+                        sliceHeightPx,
+                        0,
+                        0,
+                        canvas.width,
+                        sliceHeightPx
+                    );
+
+                    const pageData = pageCanvas.toDataURL('image/jpeg', 0.72);
+                    const pageHeightMm = sliceHeightPx / pxPerMm;
+
+                    if (pageIndex > 0) pdf.addPage();
+                    pdf.addImage(pageData, 'JPEG', 0, 0, pgW, pageHeightMm, undefined, 'MEDIUM');
+
+                    renderedHeightPx += sliceHeightPx;
+                    pageIndex += 1;
+                }
+
+                const safeName = '{{ project.name }}'.replace(/[^a-zA-Z0-9]/g, '_');
+                const dateCode = today.toISOString().slice(0, 10);
+                pdf.save(`WeekReport_${safeName}_${dateCode}.pdf`);
+
+            } catch (err) {
+                console.error('PDF export error:', err);
+                alert('PDF generation failed. Check browser console for details.');
+            } finally {
+                // Restore main styles
+                mainEl.style.overflow   = saved.mainOverflow;
+                mainEl.style.height     = saved.mainHeight;
+                mainEl.style.maxHeight  = saved.mainMaxHeight;
+                mainEl.style.flex       = saved.mainFlex;
+                mainEl.style.position   = saved.mainPos;
+                mainEl.style.width      = '';
+                if (wrapper) { wrapper.style.height = saved.wrapperHeight; wrapper.style.overflow = saved.wrapperOverflow; }
+                body.style.overflow     = saved.bodyOverflow;
+                html.style.overflow     = saved.htmlOverflow;
+                mainEl.scrollTop        = saved.scrollTop;
+
+                // Restore inner scrollables
+                innerScrollables.forEach(el => { el.style.cssText = el._pdfOrigInner; });
+
+                // Restore hidden elements
+                toHide.forEach(el => { el.style.display = el._pdfOrig; });
+                rh.style.display = 'none';
+
+                btn.innerHTML = btnOrig;
+                btn.disabled  = false;
             }
         }
 
